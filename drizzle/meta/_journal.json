@@ -8,6 +8,13 @@
       "when": 1747405647383,
       "tag": "0000_lively_blizzard",
       "breakpoints": true
+    },
+    {
+      "idx": 1,
+      "version": "7",
+      "when": 1747526966520,
+      "tag": "0001_brown_mikhail_rasputin",
+      "breakpoints": true
     }
   ]
 }
