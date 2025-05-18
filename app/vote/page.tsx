@@ -1,153 +1,189 @@
-"use client"
+"use client";
 
-import { useState } from "react"
-import { Button } from "@/components/ui/button"
-import { Input } from "@/components/ui/input"
-import { Card, CardContent } from "@/components/ui/card"
-import { ArrowLeft, CheckCircle, Loader2 } from "lucide-react"
-import Link from "next/link"
-import CandidateCard from "@/components/candidate-card"
-import VotingResults from "@/components/voting-results"
-import Image from "next/image"
-import { getElectionByCode } from "@/actions/election-actions"
-import { verifyVoterCode, castVote } from "@/actions/voter-actions"
-import { toast } from "@/components/ui/use-toast"
-import { useRouter } from "next/navigation"
+import { useState } from "react";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Card, CardContent } from "@/components/ui/card";
+import { ArrowLeft, CheckCircle, Loader2 } from "lucide-react";
+import Link from "next/link";
+import CandidateCard from "@/components/candidate-card";
+import VotingResults from "@/components/voting-results";
+import Image from "next/image";
+import { getElectionByCode } from "@/actions/election-actions";
+import { verifyVoterCode, castVote } from "@/actions/voter-actions";
+import { toast } from "@/components/ui/use-toast";
+import { useRouter } from "next/navigation";
 
 export default function VotePage() {
-  const router = useRouter()
-  const [electionCode, setElectionCode] = useState("")
-  const [voterCode, setVoterCode] = useState("")
-  const [electionFound, setElectionFound] = useState(false)
-  const [voterVerified, setVoterVerified] = useState(false)
-  const [selectedCandidate, setSelectedCandidate] = useState(null)
-  const [isSubmitting, setIsSubmitting] = useState(false)
-  const [voteSubmitted, setVoteSubmitted] = useState(false)
+  const router = useRouter();
+  const [electionCode, setElectionCode] = useState("");
+  const [voterCode, setVoterCode] = useState("");
+  const [electionFound, setElectionFound] = useState(false);
+  const [voterVerified, setVoterVerified] = useState(false);
+  const [selectedCandidate, setSelectedCandidate] = useState<Candidate | null>(
+    null
+  );
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [voteSubmitted, setVoteSubmitted] = useState(false);
 
-  const [election, setElection] = useState(null)
-  const [voter, setVoter] = useState(null)
-  const [voteResults, setVoteResults] = useState(null)
+  type Candidate = {
+    id: string;
+    name: string;
+    description: string;
+    [key: string]: any;
+  };
 
-  const handleElectionCodeSubmit = async (e) => {
-    e.preventDefault()
+  type Election = {
+    candidates: Candidate[];
+    id: string;
+    title: string;
+    description: string;
+    start_time: string;
+    end_time: string;
+    code: string;
+    banner_url?: string;
+    created_at: string;
+  };
+
+  const [election, setElection] = useState<Election | null>(null);
+  type Voter = {
+    id: string;
+    [key: string]: any;
+  };
+  const [voter, setVoter] = useState<Voter | null | undefined>(null);
+  const [voteResults, setVoteResults] = useState(null);
+
+  const handleElectionCodeSubmit = async (
+    e: React.FormEvent<HTMLFormElement>
+  ) => {
+    e.preventDefault();
 
     if (!electionCode.trim()) {
       toast({
         title: "Error",
         description: "Please enter an election code",
         variant: "destructive",
-      })
-      return
+      });
+      return;
     }
 
-    setIsSubmitting(true)
+    setIsSubmitting(true);
 
     try {
-      const result = await getElectionByCode(electionCode)
+      const result = await getElectionByCode(electionCode);
 
       if (!result.success) {
         toast({
           title: "Error",
           description: result.error || "Invalid election code",
           variant: "destructive",
-        })
-        return
+        });
+        return;
       }
 
-      setElection(result.data)
-      setElectionFound(true)
+      if (!result.data) {
+        toast({
+          title: "Error",
+          description: "Election data is missing from the response.",
+          variant: "destructive",
+        });
+        return;
+      }
+
+      setElection(result.data);
+      setElectionFound(true);
     } catch (error) {
-      console.error("Error fetching election:", error)
+      console.error("Error fetching election:", error);
       toast({
         title: "Error",
         description: "Failed to verify election code. Please try again.",
         variant: "destructive",
-      })
+      });
     } finally {
-      setIsSubmitting(false)
+      setIsSubmitting(false);
     }
-  }
+  };
 
-  const handleVoterCodeVerify = async (e) => {
-    e.preventDefault()
+  const handleVoterCodeVerify = async (e: React.FormEvent<HTMLFormElement>) => {
+    e.preventDefault();
 
     if (!voterCode.trim()) {
       toast({
         title: "Error",
         description: "Please enter a voter code",
         variant: "destructive",
-      })
-      return
+      });
+      return;
     }
 
-    setIsSubmitting(true)
+    setIsSubmitting(true);
 
     try {
-      const result = await verifyVoterCode(electionCode, voterCode)
+      const result = await verifyVoterCode(electionCode, voterCode);
 
       if (!result.success) {
         toast({
           title: "Error",
           description: result.error || "Invalid voter code",
           variant: "destructive",
-        })
-        return
+        });
+        return;
       }
 
-      setVoter(result.data)
-      setVoterVerified(true)
+      setVoter(result.data);
+      setVoterVerified(true);
     } catch (error) {
-      console.error("Error verifying voter:", error)
+      console.error("Error verifying voter:", error);
       toast({
         title: "Error",
         description: "Failed to verify voter code. Please try again.",
         variant: "destructive",
-      })
+      });
     } finally {
-      setIsSubmitting(false)
+      setIsSubmitting(false);
     }
-  }
+  };
 
-  const handleCandidateSelect = (candidate) => {
+  const handleCandidateSelect = (candidate: Candidate) => {
     if (voterVerified) {
-      setSelectedCandidate(candidate)
+      setSelectedCandidate(candidate);
     }
-  }
+  };
 
   const handleVoteSubmit = async () => {
     if (!selectedCandidate || !voter) {
-      return
+      return;
     }
 
-    setIsSubmitting(true)
+    setIsSubmitting(true);
 
     try {
       // Generate a simple signature (in a real app, this would be a proper digital signature)
-      const signature = `${voter.id}-${selectedCandidate.id}-${Date.now()}`
+      const signature = `${voter.id}-${selectedCandidate.id}-${Date.now()}`;
 
-      const result = await castVote(voter.id, selectedCandidate.id, signature)
+      const result = await castVote(voter.id, selectedCandidate.id, signature);
 
       if (!result.success) {
         toast({
           title: "Error",
           description: result.error || "Failed to cast vote",
           variant: "destructive",
-        })
-        return
+        });
+        return;
       }
 
-      setVoteSubmitted(true)
+      setVoteSubmitted(true);
     } catch (error) {
-      console.error("Error casting vote:", error)
+      console.error("Error casting vote:", error);
       toast({
         title: "Error",
         description: "Failed to cast vote. Please try again.",
         variant: "destructive",
-      })
+      });
     } finally {
-      setIsSubmitting(false)
+      setIsSubmitting(false);
     }
-  }
+  };
 
   if (voteSubmitted) {
     return (
@@ -155,14 +191,16 @@ export default function VotePage() {
         <div className="text-center mb-8">
           <CheckCircle className="mx-auto h-16 w-16 text-emerald-500 mb-4" />
           <h1 className="text-2xl font-bold mb-2">Suara Anda Telah Dikirim!</h1>
-          <p className="text-gray-600">Terima kasih telah berpartisipasi dalam pemilihan ini.</p>
+          <p className="text-gray-600">
+            Terima kasih telah berpartisipasi dalam pemilihan ini.
+          </p>
         </div>
 
         <VotingResults
           candidates={election?.candidates || []}
-          electionId={election?.id}
+          electionId={election?.id ?? ""}
           showResults={true} // This would come from the election settings
-          electionEnded={new Date() > new Date(election?.end_time)}
+          electionEnded={new Date() > new Date(election?.end_time ?? 0)}
         />
 
         <div className="mt-8 text-center">
@@ -174,7 +212,7 @@ export default function VotePage() {
           </Link>
         </div>
       </div>
-    )
+    );
   }
 
   return (
@@ -194,7 +232,10 @@ export default function VotePage() {
             <form onSubmit={handleElectionCodeSubmit}>
               <div className="space-y-4">
                 <div>
-                  <label htmlFor="electionCode" className="block text-sm font-medium mb-1">
+                  <label
+                    htmlFor="electionCode"
+                    className="block text-sm font-medium mb-1"
+                  >
                     Kode Pemilihan
                   </label>
                   <Input
@@ -206,7 +247,11 @@ export default function VotePage() {
                     disabled={isSubmitting}
                   />
                 </div>
-                <Button type="submit" className="w-full" disabled={isSubmitting}>
+                <Button
+                  type="submit"
+                  className="w-full"
+                  disabled={isSubmitting}
+                >
                   {isSubmitting ? (
                     <>
                       <Loader2 className="mr-2 h-4 w-4 animate-spin" />
@@ -251,7 +296,10 @@ export default function VotePage() {
                 <form onSubmit={handleVoterCodeVerify}>
                   <div className="space-y-4">
                     <div>
-                      <label htmlFor="voterCode" className="block text-sm font-medium mb-1">
+                      <label
+                        htmlFor="voterCode"
+                        className="block text-sm font-medium mb-1"
+                      >
                         Kode Pemilih
                       </label>
                       <Input
@@ -263,7 +311,11 @@ export default function VotePage() {
                         disabled={isSubmitting}
                       />
                     </div>
-                    <Button type="submit" className="w-full" disabled={isSubmitting}>
+                    <Button
+                      type="submit"
+                      className="w-full"
+                      disabled={isSubmitting}
+                    >
                       {isSubmitting ? (
                         <>
                           <Loader2 className="mr-2 h-4 w-4 animate-spin" />
@@ -307,11 +359,13 @@ export default function VotePage() {
                   "Tandatangani & Kirim Suara"
                 )}
               </Button>
-              <p className="text-sm text-gray-500 mt-2">Suara Anda akan dienkripsi dan ditandatangani secara digital</p>
+              <p className="text-sm text-gray-500 mt-2">
+                Suara Anda akan dienkripsi dan ditandatangani secara digital
+              </p>
             </div>
           )}
         </>
       )}
     </div>
-  )
+  );
 }
