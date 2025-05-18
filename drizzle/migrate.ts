@@ -16,6 +16,6 @@ const migrationsDir = path.join(__dirname, "migrations");
 console.log("Running migrations from:", migrationsDir);
 
 (async () => {
-  await migrate(db, { migrationsFolder: migrationsDir });
+  await migrate(db as any, { migrationsFolder: migrationsDir });
   console.log("✅ Migration completed!");
 })();
