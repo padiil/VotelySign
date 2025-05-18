@@ -1,26 +1,54 @@
-"use client"
+"use client";
 
-import { useState } from "react"
-import { Button } from "@/components/ui/button"
-import { Input } from "@/components/ui/input"
-import { Textarea } from "@/components/ui/textarea"
-import { Card, CardContent } from "@/components/ui/card"
-import { Label } from "@/components/ui/label"
-import { ArrowLeft, Calendar, Loader2, Plus, Trash2, Upload, Lock, ImageIcon } from "lucide-react"
-import Link from "next/link"
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
-import ElectionDetails from "@/components/election-details"
-import Image from "next/image"
-import { createElection, addCandidates, addVoters } from "@/actions/election-actions"
-import { useRouter } from "next/navigation"
-import { toast } from "@/components/ui/use-toast"
+import { useState } from "react";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Textarea } from "@/components/ui/textarea";
+import { Card, CardContent } from "@/components/ui/card";
+import { Label } from "@/components/ui/label";
+import {
+  ArrowLeft,
+  Calendar,
+  Loader2,
+  Plus,
+  Trash2,
+  Upload,
+  Lock,
+  ImageIcon,
+} from "lucide-react";
+import Link from "next/link";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import ElectionDetails from "@/components/election-details";
+import Image from "next/image";
+import {
+  createElection,
+  addCandidates,
+  addVoters,
+} from "@/actions/election-actions";
+import { useRouter } from "next/navigation";
+import { toast } from "@/components/ui/use-toast";
+import type { Election } from "@/types";
 
 export default function CreateElectionPage() {
-  const router = useRouter()
-  const [step, setStep] = useState(1)
-  const [isSubmitting, setIsSubmitting] = useState(false)
-  const [electionCreated, setElectionCreated] = useState(false)
-  const [electionData, setElectionData] = useState({
+  const router = useRouter();
+  const [step, setStep] = useState(1);
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [electionCreated, setElectionCreated] = useState(false);
+  const [electionData, setElectionData] = useState<{
+    title: string;
+    description: string;
+    start_time: string;
+    end_time: string;
+    voters: string[];
+    candidates: {
+      id: number;
+      name: string;
+      photo: File | null;
+      description: string;
+    }[];
+    showRealTimeResults: boolean;
+    banner: File | null;
+  }>({
     title: "",
     description: "",
     start_time: "",
@@ -29,149 +57,183 @@ export default function CreateElectionPage() {
     candidates: [{ id: 1, name: "", photo: null, description: "" }],
     showRealTimeResults: true,
     banner: null,
-  })
+  });
 
-  const [createdElection, setCreatedElection] = useState(null)
-  const [generatedCodes, setGeneratedCodes] = useState({
+  const [createdElection, setCreatedElection] = useState<Election | null>(null);
+  const [generatedCodes, setGeneratedCodes] = useState<{
+    electionCode: string;
+    voterCodes: string[];
+  }>({
     electionCode: "",
     voterCodes: [],
-  })
+  });
 
-  const handleInputChange = (e) => {
-    const { name, value } = e.target
+  const handleInputChange = (
+    e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>
+  ) => {
+    const { name, value } = e.target;
     setElectionData({
       ...electionData,
       [name]: value,
-    })
-  }
+    });
+  };
 
-  const handleCandidateChange = (index, field, value) => {
-    const updatedCandidates = [...electionData.candidates]
+  const handleCandidateChange = (index: number, field: string, value: any) => {
+    const updatedCandidates = [...electionData.candidates];
     updatedCandidates[index] = {
       ...updatedCandidates[index],
       [field]: value,
-    }
+    };
     setElectionData({
       ...electionData,
       candidates: updatedCandidates,
-    })
-  }
+    });
+  };
 
   const addCandidate = () => {
     setElectionData({
       ...electionData,
       candidates: [
         ...electionData.candidates,
-        { id: electionData.candidates.length + 1, name: "", photo: null, description: "" },
+        {
+          id: electionData.candidates.length + 1,
+          name: "",
+          photo: null,
+          description: "",
+        },
       ],
-    })
-  }
+    });
+  };
 
-  const removeCandidate = (index) => {
-    const updatedCandidates = [...electionData.candidates]
-    updatedCandidates.splice(index, 1)
+  const removeCandidate = (index: number) => {
+    const updatedCandidates = [...electionData.candidates];
+    updatedCandidates.splice(index, 1);
     setElectionData({
       ...electionData,
       candidates: updatedCandidates,
-    })
-  }
+    });
+  };
 
-  const handleVoterInput = (e) => {
-    const voterList = e.target.value.split("\n").filter((voter) => voter.trim() !== "")
+  const handleVoterInput = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
+    const voterList = e.target.value
+      .split("\n")
+      .filter((voter) => voter.trim() !== "");
     setElectionData({
       ...electionData,
       voters: voterList,
-    })
-  }
+    });
+  };
 
-  const handleBannerUpload = (e) => {
+  const handleBannerUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
     if (e.target.files && e.target.files[0]) {
       setElectionData({
         ...electionData,
         banner: e.target.files[0],
-      })
+      });
     }
-  }
+  };
 
-  const handleSubmit = async (e) => {
-    e.preventDefault()
-    setIsSubmitting(true)
+  const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
+    e.preventDefault();
+    setIsSubmitting(true);
 
     try {
       // Create a FormData object for the election
-      const formData = new FormData()
-      formData.append("title", electionData.title)
-      formData.append("description", electionData.description)
-      formData.append("start_time", electionData.start_time)
-      formData.append("end_time", electionData.end_time)
+      const formData = new FormData();
+      formData.append("title", electionData.title);
+      formData.append("description", electionData.description);
+      formData.append("start_time", electionData.start_time);
+      formData.append("end_time", electionData.end_time);
 
       if (electionData.banner) {
-        formData.append("banner", electionData.banner)
+        formData.append("banner", electionData.banner);
       }
 
       // Create the election
-      const electionResult = await createElection(formData)
+      const electionResult = await createElection(formData);
 
       if (!electionResult.success) {
         toast({
           title: "Error",
           description: electionResult.error,
           variant: "destructive",
-        })
-        setIsSubmitting(false)
-        return
+        });
+        setIsSubmitting(false);
+        return;
       }
 
-      const election = electionResult.data
-      setCreatedElection(election)
+      const election = electionResult.data;
+      if (!election) {
+        toast({
+          title: "Error",
+          description: "Election data is missing from the response.",
+          variant: "destructive",
+        });
+        setIsSubmitting(false);
+        return;
+      }
+      setCreatedElection(election);
       setGeneratedCodes((prev) => ({
         ...prev,
         electionCode: election.code,
-      }))
+      }));
 
       // Add candidates
       const candidatesToAdd = electionData.candidates.map((candidate) => ({
         name: candidate.name,
-        photo_url: candidate.photo ? URL.createObjectURL(candidate.photo) : null,
+        photo_url: candidate.photo
+          ? URL.createObjectURL(candidate.photo)
+          : undefined,
         description: candidate.description,
-      }))
+      }));
 
-      const candidatesResult = await addCandidates(election.id, candidatesToAdd)
+      const candidatesResult = await addCandidates(
+        election.id,
+        candidatesToAdd
+      );
 
       if (!candidatesResult.success) {
         toast({
           title: "Warning",
-          description: "Election created but failed to add candidates: " + candidatesResult.error,
-        })
+          description:
+            "Election created but failed to add candidates: " +
+            candidatesResult.error,
+        });
       }
 
       // Add voters
-      const votersResult = await addVoters(election.id, electionData.voters.length || 5)
+      const votersResult = await addVoters(
+        election.id,
+        electionData.voters.length || 5
+      );
 
       if (!votersResult.success) {
         toast({
           title: "Warning",
-          description: "Election created but failed to add voters: " + votersResult.error,
-        })
+          description:
+            "Election created but failed to add voters: " + votersResult.error,
+        });
       } else {
         setGeneratedCodes((prev) => ({
           ...prev,
-          voterCodes: votersResult.data.map((v) => v.code),
-        }))
+          voterCodes: Array.isArray(votersResult.data)
+            ? votersResult.data.map((v) => v.code)
+            : [],
+        }));
       }
 
-      setElectionCreated(true)
+      setElectionCreated(true);
     } catch (error) {
-      console.error("Error creating election:", error)
+      console.error("Error creating election:", error);
       toast({
         title: "Error",
         description: "Failed to create election. Please try again.",
         variant: "destructive",
-      })
+      });
     } finally {
-      setIsSubmitting(false)
+      setIsSubmitting(false);
     }
-  }
+  };
 
   if (electionCreated) {
     return (
@@ -187,7 +249,9 @@ export default function CreateElectionPage() {
           <div className="mb-6 rounded-lg overflow-hidden shadow-md">
             <div className="relative w-full h-48">
               <Image
-                src={URL.createObjectURL(electionData.banner) || "/placeholder.svg"}
+                src={
+                  URL.createObjectURL(electionData.banner) || "/placeholder.svg"
+                }
                 alt="Banner pemilihan"
                 fill
                 className="object-cover"
@@ -202,7 +266,9 @@ export default function CreateElectionPage() {
 
         <Card className="mb-6">
           <CardContent className="pt-6">
-            <h2 className="text-2xl font-bold mb-4 text-center">Pemilihan Berhasil Dibuat!</h2>
+            <h2 className="text-2xl font-bold mb-4 text-center">
+              Pemilihan Berhasil Dibuat!
+            </h2>
 
             <div className="mb-6 p-4 bg-gray-50 rounded-lg border">
               <div className="mb-4">
@@ -220,7 +286,10 @@ export default function CreateElectionPage() {
                 <div className="max-h-40 overflow-y-auto p-3 bg-white border rounded-md">
                   <ul className="space-y-2">
                     {generatedCodes.voterCodes.map((code, index) => (
-                      <li key={index} className="font-mono flex justify-between">
+                      <li
+                        key={index}
+                        className="font-mono flex justify-between"
+                      >
                         <span>Pemilih #{index + 1}</span>
                         <span className="font-bold">{code}</span>
                       </li>
@@ -244,28 +313,44 @@ export default function CreateElectionPage() {
             <TabsTrigger value="results">Hasil Pemilihan</TabsTrigger>
           </TabsList>
           <TabsContent value="overview">
-            <ElectionDetails election={electionData} />
+            <ElectionDetails
+              election={{
+                ...electionData,
+                banner: electionData.banner ?? undefined,
+              }}
+            />
           </TabsContent>
           <TabsContent value="results">
             <Card>
               <CardContent className="pt-6">
-                <h3 className="text-lg font-semibold mb-4">Hasil Pemilihan Real-time</h3>
+                <h3 className="text-lg font-semibold mb-4">
+                  Hasil Pemilihan Real-time
+                </h3>
                 {electionData.showRealTimeResults ? (
                   <div className="space-y-4">
                     {electionData.candidates.map((candidate, index) => (
-                      <div key={index} className="flex items-center justify-between">
+                      <div
+                        key={index}
+                        className="flex items-center justify-between"
+                      >
                         <div className="flex items-center">
                           <div className="w-10 h-10 bg-gray-200 rounded-full mr-3"></div>
-                          <span>{candidate.name || `Kandidat #${index + 1}`}</span>
+                          <span>
+                            {candidate.name || `Kandidat #${index + 1}`}
+                          </span>
                         </div>
                         <div className="flex items-center">
                           <div className="w-48 h-4 bg-gray-100 rounded-full overflow-hidden mr-3">
                             <div
                               className="h-full bg-emerald-500"
-                              style={{ width: `${Math.floor(Math.random() * 100)}%` }}
+                              style={{
+                                width: `${Math.floor(Math.random() * 100)}%`,
+                              }}
                             ></div>
                           </div>
-                          <span className="font-semibold">{Math.floor(Math.random() * 100)} suara</span>
+                          <span className="font-semibold">
+                            {Math.floor(Math.random() * 100)} suara
+                          </span>
                         </div>
                       </div>
                     ))}
@@ -274,12 +359,15 @@ export default function CreateElectionPage() {
                   <div className="text-center py-6">
                     <Lock className="mx-auto h-10 w-10 text-gray-400 mb-3" />
                     <p className="text-gray-600">
-                      Hasil pemilihan akan disembunyikan hingga periode pemilihan berakhir.
+                      Hasil pemilihan akan disembunyikan hingga periode
+                      pemilihan berakhir.
                     </p>
                   </div>
                 )}
 
-                <h3 className="text-lg font-semibold mt-8 mb-4">Status Pemilih</h3>
+                <h3 className="text-lg font-semibold mt-8 mb-4">
+                  Status Pemilih
+                </h3>
                 <div className="border rounded-md overflow-hidden">
                   <table className="min-w-full divide-y divide-gray-200">
                     <thead className="bg-gray-50">
@@ -298,7 +386,9 @@ export default function CreateElectionPage() {
                     <tbody className="bg-white divide-y divide-gray-200">
                       {generatedCodes.voterCodes.map((code, index) => (
                         <tr key={index}>
-                          <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{index + 1}</td>
+                          <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                            {index + 1}
+                          </td>
                           <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
                             Pemilih #{index + 1}
                           </td>
@@ -317,7 +407,7 @@ export default function CreateElectionPage() {
           </TabsContent>
         </Tabs>
       </div>
-    )
+    );
   }
 
   return (
@@ -353,7 +443,10 @@ export default function CreateElectionPage() {
                   {electionData.banner ? (
                     <div className="relative w-full h-48 mb-3 rounded-lg overflow-hidden">
                       <Image
-                        src={URL.createObjectURL(electionData.banner) || "/placeholder.svg"}
+                        src={
+                          URL.createObjectURL(electionData.banner) ||
+                          "/placeholder.svg"
+                        }
                         alt="Preview banner"
                         fill
                         className="object-cover"
@@ -362,13 +455,24 @@ export default function CreateElectionPage() {
                   ) : (
                     <div className="w-full h-48 mb-3 bg-gray-100 rounded-lg flex flex-col items-center justify-center border-2 border-dashed border-gray-300">
                       <ImageIcon className="h-10 w-10 text-gray-400 mb-2" />
-                      <p className="text-sm text-gray-500">Upload banner pemilihan</p>
-                      <p className="text-xs text-gray-400">Rekomendasi: 1200 x 400 piksel</p>
+                      <p className="text-sm text-gray-500">
+                        Upload banner pemilihan
+                      </p>
+                      <p className="text-xs text-gray-400">
+                        Rekomendasi: 1200 x 400 piksel
+                      </p>
                     </div>
                   )}
-                  <Input id="banner" type="file" accept="image/*" onChange={handleBannerUpload} className="mt-2" />
+                  <Input
+                    id="banner"
+                    type="file"
+                    accept="image/*"
+                    onChange={handleBannerUpload}
+                    className="mt-2"
+                  />
                   <p className="text-xs text-gray-500 mt-1">
-                    Banner akan ditampilkan di halaman pemilihan untuk menarik perhatian pemilih.
+                    Banner akan ditampilkan di halaman pemilihan untuk menarik
+                    perhatian pemilih.
                   </p>
                 </div>
               </div>
@@ -418,7 +522,10 @@ export default function CreateElectionPage() {
               </div>
               <div className="mt-4">
                 <div className="flex items-center justify-between">
-                  <Label htmlFor="showRealTimeResults" className="text-sm font-medium">
+                  <Label
+                    htmlFor="showRealTimeResults"
+                    className="text-sm font-medium"
+                  >
                     Tampilkan Hasil Secara Real-time
                   </Label>
                   <div className="relative inline-flex items-center">
@@ -432,12 +539,14 @@ export default function CreateElectionPage() {
                         setElectionData({
                           ...electionData,
                           showRealTimeResults: e.target.checked,
-                        })
+                        });
                       }}
                     />
                     <div
                       className={`block h-6 w-10 rounded-full transition ${
-                        electionData.showRealTimeResults ? "bg-emerald-500" : "bg-gray-300"
+                        electionData.showRealTimeResults
+                          ? "bg-emerald-500"
+                          : "bg-gray-300"
                       }`}
                     ></div>
                     <div
@@ -465,7 +574,12 @@ export default function CreateElectionPage() {
               <div className="flex justify-between items-center mb-4">
                 <h3 className="font-semibold">Kandidat #{index + 1}</h3>
                 {electionData.candidates.length > 1 && (
-                  <Button type="button" variant="ghost" size="sm" onClick={() => removeCandidate(index)}>
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => removeCandidate(index)}
+                  >
                     <Trash2 className="h-4 w-4" />
                   </Button>
                 )}
@@ -473,23 +587,32 @@ export default function CreateElectionPage() {
 
               <div className="space-y-4">
                 <div>
-                  <Label htmlFor={`candidate-name-${index}`}>Nama Kandidat</Label>
+                  <Label htmlFor={`candidate-name-${index}`}>
+                    Nama Kandidat
+                  </Label>
                   <Input
                     id={`candidate-name-${index}`}
                     placeholder="Nama lengkap kandidat"
                     value={candidate.name}
-                    onChange={(e) => handleCandidateChange(index, "name", e.target.value)}
+                    onChange={(e) =>
+                      handleCandidateChange(index, "name", e.target.value)
+                    }
                     required
                   />
                 </div>
 
                 <div>
-                  <Label htmlFor={`candidate-photo-${index}`}>Foto Kandidat</Label>
+                  <Label htmlFor={`candidate-photo-${index}`}>
+                    Foto Kandidat
+                  </Label>
                   <div className="flex items-center mt-1">
                     <div className="w-20 h-20 bg-gray-200 rounded-md flex items-center justify-center mr-4">
                       {candidate.photo ? (
                         <img
-                          src={URL.createObjectURL(candidate.photo) || "/placeholder.svg"}
+                          src={
+                            URL.createObjectURL(candidate.photo) ||
+                            "/placeholder.svg"
+                          }
                           alt={candidate.name}
                           className="w-full h-full object-cover rounded-md"
                         />
@@ -504,7 +627,11 @@ export default function CreateElectionPage() {
                       className="flex-1"
                       onChange={(e) => {
                         if (e.target.files && e.target.files[0]) {
-                          handleCandidateChange(index, "photo", e.target.files[0])
+                          handleCandidateChange(
+                            index,
+                            "photo",
+                            e.target.files[0]
+                          );
                         }
                       }}
                     />
@@ -512,12 +639,20 @@ export default function CreateElectionPage() {
                 </div>
 
                 <div>
-                  <Label htmlFor={`candidate-description-${index}`}>Visi & Misi</Label>
+                  <Label htmlFor={`candidate-description-${index}`}>
+                    Visi & Misi
+                  </Label>
                   <Textarea
                     id={`candidate-description-${index}`}
                     placeholder="Jelaskan visi dan misi kandidat"
                     value={candidate.description}
-                    onChange={(e) => handleCandidateChange(index, "description", e.target.value)}
+                    onChange={(e) =>
+                      handleCandidateChange(
+                        index,
+                        "description",
+                        e.target.value
+                      )
+                    }
                     required
                   />
                 </div>
@@ -526,7 +661,12 @@ export default function CreateElectionPage() {
           </Card>
         ))}
 
-        <Button type="button" variant="outline" className="w-full mb-6" onClick={addCandidate}>
+        <Button
+          type="button"
+          variant="outline"
+          className="w-full mb-6"
+          onClick={addCandidate}
+        >
           <Plus className="mr-2 h-4 w-4" />
           Tambah Kandidat
         </Button>
@@ -544,7 +684,9 @@ export default function CreateElectionPage() {
                   onChange={handleVoterInput}
                   required
                 />
-                <p className="text-sm text-gray-500 mt-1">Format: Nama/Email (satu per baris)</p>
+                <p className="text-sm text-gray-500 mt-1">
+                  Format: Nama/Email (satu per baris)
+                </p>
               </div>
 
               <div className="flex justify-center">
@@ -577,5 +719,5 @@ export default function CreateElectionPage() {
         </div>
       </form>
     </div>
-  )
+  );
 }

@@ -92,13 +92,15 @@ export const voters = pgTable("voters", {
 export const vote_transactions = pgTable("vote_transactions", {
   id: serial("id").primaryKey(),
   block_id: integer("block_id").references(() => blocks.id),
+  candidate_id: integer("candidate_id").notNull().references(() => candidates.id),
   transaction_hash: text("transaction_hash").notNull().unique(),
-  encrypted_vote: text("encrypted_vote").notNull(), // Encrypted candidate choice
-  schnorr_signature: text("schnorr_signature").notNull(), // Voter's signature
-  bulletproof: text("bulletproof").notNull(), // Zero-knowledge proof of valid vote
+  encrypted_vote: text("encrypted_vote").notNull(),
+  schnorr_signature: text("schnorr_signature").notNull(),
+  bulletproof: text("bulletproof").notNull(),
   timestamp: timestamp("timestamp").defaultNow(),
-  nullifier_hash: text("nullifier_hash").notNull().unique(), // Links to voter anonymously
-  verification_data: jsonb("verification_data"), // Verification metadata
+  nullifier_hash: text("nullifier_hash").notNull().unique(),
+  verification_data: jsonb("verification_data"),
+  // voter_id: integer("voter_id").references(() => voters.id), // Uncomment if you want to add voter_id
 });
 
 // Audit log with zero-knowledge components

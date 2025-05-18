@@ -1,0 +1,2 @@
+ALTER TABLE "vote_transactions" ADD COLUMN "candidate_id" integer NOT NULL;--> statement-breakpoint
+ALTER TABLE "vote_transactions" ADD CONSTRAINT "vote_transactions_candidate_id_candidates_id_fk" FOREIGN KEY ("candidate_id") REFERENCES "public"."candidates"("id") ON DELETE no action ON UPDATE no action;

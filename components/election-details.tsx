@@ -1,20 +1,18 @@
-import { Card, CardContent } from "@/components/ui/card"
-import Image from "next/image"
+import { Card, CardContent } from "@/components/ui/card";
+import Image from "next/image";
 
-interface ElectionDetailsProps {
-  election: {
-    banner?: File | string;
-    name?: string;
-    description?: string;
-    startDate?: string;
-    endDate?: string;
-    candidates?: any[];
-    voters?: any[];
-    showRealTimeResults?: boolean;
-  };
+interface Election {
+  banner?: File | string;
+  name?: string;
+  description?: string;
+  startDate?: string;
+  endDate?: string;
+  candidates?: any[];
+  voters?: any[];
+  showRealTimeResults?: boolean;
 }
 
-export default function ElectionDetails({ election }: ElectionDetailsProps) {
+export default function ElectionDetails({ election }: { election: Election }) {
   return (
     <Card>
       <CardContent className="pt-6">
@@ -22,10 +20,18 @@ export default function ElectionDetails({ election }: ElectionDetailsProps) {
 
         {election.banner && (
           <div className="mb-4">
-            <h4 className="text-sm font-medium text-gray-500 mb-2">Banner Pemilihan</h4>
+            <h4 className="text-sm font-medium text-gray-500 mb-2">
+              Banner Pemilihan
+            </h4>
             <div className="relative w-full h-32 rounded-md overflow-hidden">
               <Image
-                src={URL.createObjectURL(election.banner) || "/placeholder.svg"}
+                src={
+                  typeof election.banner === "string"
+                    ? election.banner
+                    : election.banner
+                    ? URL.createObjectURL(election.banner)
+                    : "/placeholder.svg"
+                }
                 alt="Banner pemilihan"
                 fill
                 className="object-cover"
@@ -36,7 +42,9 @@ export default function ElectionDetails({ election }: ElectionDetailsProps) {
 
         <div className="space-y-4">
           <div>
-            <h4 className="text-sm font-medium text-gray-500">Nama Pemilihan</h4>
+            <h4 className="text-sm font-medium text-gray-500">
+              Nama Pemilihan
+            </h4>
             <p>{election.name || "Belum diisi"}</p>
           </div>
 
@@ -47,32 +55,46 @@ export default function ElectionDetails({ election }: ElectionDetailsProps) {
 
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div>
-              <h4 className="text-sm font-medium text-gray-500">Tanggal Mulai</h4>
+              <h4 className="text-sm font-medium text-gray-500">
+                Tanggal Mulai
+              </h4>
               <p>{election.startDate || "Belum diisi"}</p>
             </div>
 
             <div>
-              <h4 className="text-sm font-medium text-gray-500">Tanggal Selesai</h4>
+              <h4 className="text-sm font-medium text-gray-500">
+                Tanggal Selesai
+              </h4>
               <p>{election.endDate || "Belum diisi"}</p>
             </div>
           </div>
 
           <div>
-            <h4 className="text-sm font-medium text-gray-500">Jumlah Kandidat</h4>
+            <h4 className="text-sm font-medium text-gray-500">
+              Jumlah Kandidat
+            </h4>
             <p>{election.candidates?.length || 0} kandidat</p>
           </div>
 
           <div>
-            <h4 className="text-sm font-medium text-gray-500">Jumlah Pemilih</h4>
+            <h4 className="text-sm font-medium text-gray-500">
+              Jumlah Pemilih
+            </h4>
             <p>{election.voters?.length || 0} pemilih</p>
           </div>
 
           <div>
-            <h4 className="text-sm font-medium text-gray-500">Tampilkan Hasil Real-time</h4>
-            <p>{election.showRealTimeResults ? "Ya" : "Tidak, hasil akan ditampilkan setelah pemilihan berakhir"}</p>
+            <h4 className="text-sm font-medium text-gray-500">
+              Tampilkan Hasil Real-time
+            </h4>
+            <p>
+              {election.showRealTimeResults
+                ? "Ya"
+                : "Tidak, hasil akan ditampilkan setelah pemilihan berakhir"}
+            </p>
           </div>
         </div>
       </CardContent>
     </Card>
-  )
+  );
 }

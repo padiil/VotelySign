@@ -1,5 +1,5 @@
 {
-  "id": "ae85f78e-4987-4a54-b56e-4665782ba239",
+  "id": "65550027-7a6d-4a08-8ec2-5a9415ecce90",
   "prevId": "40dfeaa5-329c-4cf2-aebe-97b2851a54d2",
   "version": "7",
   "dialect": "postgresql",
@@ -491,6 +491,12 @@
           "primaryKey": false,
           "notNull": false
         },
+        "candidate_id": {
+          "name": "candidate_id",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true
+        },
         "transaction_hash": {
           "name": "transaction_hash",
           "type": "text",
@@ -543,6 +549,19 @@
           "tableTo": "blocks",
           "columnsFrom": [
             "block_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "no action",
+          "onUpdate": "no action"
+        },
+        "vote_transactions_candidate_id_candidates_id_fk": {
+          "name": "vote_transactions_candidate_id_candidates_id_fk",
+          "tableFrom": "vote_transactions",
+          "tableTo": "candidates",
+          "columnsFrom": [
+            "candidate_id"
           ],
           "columnsTo": [
             "id"
@@ -603,24 +622,6 @@
         },
         "public_key": {
           "name": "public_key",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": false
-        },
-        "wallet_address": {
-          "name": "wallet_address",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": false
-        },
-        "wallet_chain_id": {
-          "name": "wallet_chain_id",
-          "type": "integer",
-          "primaryKey": false,
-          "notNull": false
-        },
-        "wallet_signature": {
-          "name": "wallet_signature",
           "type": "text",
           "primaryKey": false,
           "notNull": false

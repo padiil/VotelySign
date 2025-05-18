@@ -79,6 +79,7 @@ export async function createVoteTransaction(
     schnorr_signature: signature,
     bulletproof: bulletproof,
     nullifier_hash: nullifierHash,
+    candidate_id: candidateId,
     verification_data: { timestamp: Date.now() },
   });
 

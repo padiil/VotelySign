@@ -1,12 +1,23 @@
 "use server"
 
-import { createServerDbClient } from "@/lib/db"
-import { elections, voters, vote_transactions } from "@/lib/schema"
-import { eq, and } from "drizzle-orm"
-import type { Voter, Vote, WalletAuthParams } from "@/types"
-import { revalidatePath } from "next/cache"
-import crypto from "crypto"
-import { verifyWalletSignature } from "@/lib/wallet-auth"
+import { createServerDbClient } from "@/lib/db";
+import { voters, vote_transactions, elections } from "@/lib/schema";
+import type { Voter, Vote } from "@/types";
+import { revalidatePath } from "next/cache";
+import crypto from "crypto";
+import { eq, and } from "drizzle-orm";
+
+// Helper: Format voter object
+function formatVoter(voter: any): Voter {
+  return {
+    ...voter,
+    id: String(voter.id),
+    election_id: String(voter.election_id),
+    code: voter.code,
+    has_voted: !!voter.has_voted,
+    created_at: voter.created_at ? voter.created_at.toISOString() : "",
+  };
+}
 
 // Verify voter code
 export async function verifyVoterCode(
@@ -14,48 +25,25 @@ export async function verifyVoterCode(
   voterCode: string,
 ): Promise<{ success: boolean; data?: Voter; error?: string }> {
   try {
-    const db = createServerDbClient()
-
-    // First, get the election by code
-    const electionResults = await db
-      .select()
-      .from(elections)
-      .where(eq(elections.code, electionCode))
-      .limit(1)
-
-    if (electionResults.length === 0) {
-      return { success: false, error: "Election not found" }
+    const db = createServerDbClient();
+    // Get the election by code
+    const [election] = await db.select().from(elections).where(eq(elections.code, electionCode)).limit(1);
+    if (!election) {
+      return { success: false, error: "Election not found" };
     }
-    
-    const election = electionResults[0]
-
-    // Then, verify the voter code
-    const voterResults = await db
-      .select()
-      .from(voters)
-      .where(
-        and(
-          eq(voters.election_id, election.id),
-          eq(voters.code, voterCode)
-        )
-      )
-      .limit(1);
-
-    if (voterResults.length === 0) {
-      return { success: false, error: "Invalid voter code" }
+    // Verify the voter code
+    const [voter] = await db.select().from(voters)
+      .where(and(eq(voters.election_id, election.id), eq(voters.code, voterCode)));
+    if (!voter) {
+      return { success: false, error: "Invalid voter code" };
     }
-
-    const voter = voterResults[0]
-
-    // Check if the voter has already voted
     if (voter.has_voted) {
-      return { success: false, error: "This voter code has already been used" }
+      return { success: false, error: "This voter code has already been used" };
     }
-
-    return { success: true, data: voter as unknown as Voter }
+    return { success: true, data: formatVoter(voter) };
   } catch (error) {
-    console.error("Verify voter code error:", error)
-    return { success: false, error: "Failed to verify voter code" }
+    console.error("Verify voter code error:", error);
+    return { success: false, error: "Failed to verify voter code" };
   }
 }
 
@@ -66,131 +54,70 @@ export async function castVote(
   signature: string,
 ): Promise<{ success: boolean; data?: Vote; error?: string }> {
   try {
-    const db = createServerDbClient()
-
+    const db = createServerDbClient();
     // Check if the voter has already voted
-    const voterResults = await db
-      .select({ has_voted: voters.has_voted })
-      .from(voters)
-      .where(eq(voters.id, parseInt(voterId)))
-      .limit(1)
-
-    if (voterResults.length === 0) {
-      return { success: false, error: "Voter not found" }
+    const [voter] = await db.select().from(voters).where(eq(voters.id, Number(voterId)));
+    if (!voter) {
+      return { success: false, error: "Voter not found" };
+    }
+    if (voter.has_voted) {
+      return { success: false, error: "This voter has already cast a vote" };
     }
 
-    if (voterResults[0].has_voted) {
-      return { success: false, error: "This voter has already cast a vote" }
+    // Ensure nullifier_hash is present, generate if missing
+    let nullifierHash = voter.nullifier_hash;
+    if (!nullifierHash) {
+      // Deterministically generate a nullifier hash using voter id and code
+      nullifierHash = crypto.createHash("sha256")
+        .update(`${voter.id}-${voter.code}-nullifier`)
+        .digest("hex");
+      // Update the voter record with the generated nullifier_hash
+      await db.update(voters)
+        .set({ nullifier_hash: nullifierHash })
+        .where(eq(voters.id, Number(voterId)));
     }
 
-    // Generate transaction hash
-    const transactionHash = crypto
-      .createHash("sha256")
-      .update(`${voterId}-${candidateId}-${Date.now()}`)
-      .digest("hex")
-
-    // Insert the vote transaction
-    // Note: You'll need to adapt this to match your actual vote_transactions schema
-    const transaction = await db
-      .insert(vote_transactions)
-      .values({
-        transaction_hash: transactionHash,
-        encrypted_vote: candidateId, // You'd encrypt this in production
-        schnorr_signature: signature,
-        bulletproof: "proof", // You'd generate real ZKP in production
-        nullifier_hash: `nh_${voterId}`, // You'd generate real nullifier in production
-        // Add other required fields based on your schema
-      })
-      .returning()
-
+    // Generate a simple block hash
+    const blockHash = crypto.createHash("sha256").update(`${voterId}-${candidateId}-${Date.now()}`).digest("hex");
+    // Insert the vote (tanpa voter_id)
+    const [inserted] = await db.insert(vote_transactions).values({
+      candidate_id: Number(candidateId), // If your schema uses 'candidate_id'
+      transaction_hash: blockHash,
+      encrypted_vote: "encrypted", // Placeholder, implement encryption as needed
+      schnorr_signature: signature,
+      bulletproof: "proof", // Placeholder, implement ZK proof as needed
+      nullifier_hash: nullifierHash,
+      verification_data: { timestamp: Date.now() },
+    }).returning();
     // Update the voter's status
-    await db
-      .update(voters)
-      .set({ has_voted: true })
-      .where(eq(voters.id, parseInt(voterId)))
-
-    revalidatePath("/vote")
-    return { success: true, data: { id: transaction[0].id.toString() } as Vote }
+    await db.update(voters).set({ has_voted: true }).where(eq(voters.id, Number(voterId)));
+    revalidatePath("/vote");
+    // Add voter_id to match Vote type and convert id, voter_id, and candidate_id to string
+    const voteWithVoterId = {
+      ...inserted,
+      voter_id: String(voterId),
+      id: String(inserted.id), // ensure id is string
+      candidate_id: String(inserted.candidate_id), // ensure candidate_id is string
+      timestamp: inserted.timestamp ? inserted.timestamp.toISOString() : "", // ensure timestamp is string
+    };
+    return { success: true, data: voteWithVoterId as Vote };
   } catch (error) {
-    console.error("Cast vote error:", error)
-    return { success: false, error: "Failed to cast vote" }
+    console.error("Cast vote error:", error);
+    return { success: false, error: "Failed to cast vote" };
   }
 }
 
 // Get voter status
 export async function getVoterStatus(voterId: string): Promise<{ success: boolean; data?: Voter; error?: string }> {
   try {
-    const db = createServerDbClient()
-
-    const voterResults = await db
-      .select()
-      .from(voters)
-      .where(eq(voters.id, parseInt(voterId)))
-      .limit(1)
-
-    if (voterResults.length === 0) {
-      return { success: false, error: "Voter not found" }
+    const db = createServerDbClient();
+    const [voter] = await db.select().from(voters).where(eq(voters.id, Number(voterId)));
+    if (!voter) {
+      return { success: false, error: "Voter not found" };
     }
-
-    return { success: true, data: voterResults[0] as unknown as Voter }
+    return { success: true, data: formatVoter(voter) };
   } catch (error) {
-    console.error("Get voter status error:", error)
-    return { success: false, error: "Failed to get voter status" }
-  }
-}
-
-// Authenticate voter with wallet
-export async function authenticateWithWallet({
-  electionId,
-  voterCode,
-  walletAddress,
-  signature,
-  message
-}: WalletAuthParams): Promise<{ success: boolean; data?: Voter; error?: string }> {
-  try {
-    const db = createServerDbClient()
-    
-    // First, verify the signature
-    if (!verifyWalletSignature(message, signature, walletAddress)) {
-      return { success: false, error: "Invalid wallet signature" };
-    }
-    
-    // Find the voter by code
-    const voterResults = await db
-      .select()
-      .from(voters)
-      .where(
-        and(
-          eq(voters.election_id, parseInt(electionId)),
-          eq(voters.code, voterCode)
-        )
-      )
-      .limit(1)
-    
-    if (voterResults.length === 0) {
-      return { success: false, error: "Voter code not found" };
-    }
-    
-    const voter = voterResults[0];
-    
-    // Check if voter has already voted
-    if (voter.has_voted) {
-      return { success: false, error: "This voter has already cast a vote" };
-    }
-    
-    // Update voter with wallet information
-    await db
-      .update(voters)
-      .set({
-        wallet_address: walletAddress,
-        wallet_signature: signature,
-      })
-      .where(eq(voters.id, voter.id));
-    
-    revalidatePath("/vote");
-    return { success: true, data: voter as unknown as Voter };
-  } catch (error) {
-    console.error("Wallet authentication error:", error);
-    return { success: false, error: "Failed to authenticate with wallet" };
+    console.error("Get voter status error:", error);
+    return { success: false, error: "Failed to get voter status" };
   }
 }

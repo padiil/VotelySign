@@ -4,7 +4,20 @@ import { Card, CardContent } from "@/components/ui/card"
 import Image from "next/image"
 import { CheckCircle } from "lucide-react"
 
-export default function CandidateCard({ candidate, isSelectable = false, isSelected = false, onSelect }) {
+type Candidate = {
+  name: string;
+  description: string;
+  photo_url?: string;
+};
+
+type CandidateCardProps = {
+  candidate: Candidate;
+  isSelectable?: boolean;
+  isSelected?: boolean;
+  onSelect?: () => void;
+};
+
+export default function CandidateCard({ candidate, isSelectable = false, isSelected = false, onSelect }: CandidateCardProps) {
   return (
     <Card
       className={`overflow-hidden transition-all ${isSelectable ? "cursor-pointer hover:shadow-md" : ""} ${
