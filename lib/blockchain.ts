@@ -1,7 +1,7 @@
 import { createServerDbClient } from "./db";
 import { blocks, vote_transactions, authority_nodes } from "./schema";
-import * as schnorr from "@noble/secp256k1";
 import * as crypto from "crypto";
+import { schnorrSign, generateBulletproof } from "./crypto";
 
 /**
  * Creates a genesis block for a new election
@@ -43,9 +43,6 @@ export async function createVoteTransaction(
   candidateId: number,
   voterPrivateKey: string
 ): Promise<string> {
-  // In a real implementation, these would be actual cryptographic operations
-  // This is a simplified version
-
   const voteData = {
     voter: voterId,
     candidate: candidateId,
@@ -53,15 +50,15 @@ export async function createVoteTransaction(
   };
   const encryptedVote = encryptVote(voteData);
 
-  // Generate Schnorr signature (simplified)
+  // Generate Schnorr signature (nyata)
   const messageHash = crypto
     .createHash("sha256")
     .update(JSON.stringify(voteData))
     .digest("hex");
   const signature = await schnorrSign(messageHash, voterPrivateKey);
 
-  // Generate bulletproof (simplified)
-  const bulletproof = generateBulletproof(candidateId);
+  // Generate bulletproof (nyata/template)
+  const bulletproof = await generateBulletproof(candidateId);
 
   // Generate nullifier to prevent double voting
   const nullifierHash = generateNullifierHash(voterId, voterPrivateKey);
@@ -117,19 +114,6 @@ async function signBlockByAuthority(
 function encryptVote(voteData: any): string {
   // In a real implementation, this would use proper encryption
   return Buffer.from(JSON.stringify(voteData)).toString("base64");
-}
-
-async function schnorrSign(
-  message: string,
-  privateKey: string
-): Promise<string> {
-  // In a real implementation, this would use actual Schnorr signing
-  return `schnorr-signature-${message.substring(0, 10)}-${Date.now()}`;
-}
-
-function generateBulletproof(value: number): string {
-  // In a real implementation, this would create an actual zero-knowledge proof
-  return `bulletproof-${value}-${Date.now()}`;
 }
 
 function generateNullifierHash(voterId: number, privateKey: string): string {

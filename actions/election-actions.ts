@@ -4,12 +4,14 @@ import { createServerDbClient } from "@/lib/db"
 import { elections, candidates, voters, vote_transactions } from "@/lib/schema"
 import type { InferModel } from "drizzle-orm"
 import { sql } from "drizzle-orm"
+import crypto from "crypto"
+import { schnorr } from "@noble/curves/secp256k1";
+import { randomBytes } from "crypto";
 
 // Ensure the Candidate type includes created_at
 type CandidateWithCreatedAt = InferModel<typeof candidates> & { created_at?: Date }
 import type { Election, ElectionWithCandidates, Candidate } from "@/types"
 import { revalidatePath } from "next/cache"
-import crypto from "crypto"
 import { eq } from "drizzle-orm"
 
 // Generate a random code
@@ -137,16 +139,35 @@ export async function addCandidates(
 // Add voters to an election
 export async function addVoters(electionId: string, voterCount: number) {
   try {
-    const db = createServerDbClient()
-    const voterCodes = Array.from({ length: voterCount }, () => ({
-      election_id: Number(electionId),
-      code: generateRandomCode(6),
-    }))
-    const data = await db.insert(voters).values(voterCodes).returning({ code: voters.code })
-    return { success: true, data }
+    const db = createServerDbClient();
+    // Generate random codes, private keys, and public keys
+    const voterCodes = Array.from({ length: voterCount }, () => {
+      const code = generateRandomCode(6);
+      const codeHash = crypto.createHash("sha256").update(code).digest("hex");
+      // Generate private key (32 bytes hex)
+      const privateKey = randomBytes(32).toString("hex");
+      // Generate public key (hex)
+      const publicKey = schnorr.getPublicKey(privateKey);
+      return {
+        election_id: Number(electionId),
+        code: codeHash,
+        public_key: publicKey,
+        _plain: code,
+        _privateKey: privateKey,
+      };
+    });
+    // Insert hashed code & public key
+    await db.insert(voters).values(
+      voterCodes.map(({ election_id, code, public_key }) => ({ election_id, code, public_key }))
+    );
+    // Return plain codes & private keys for admin/frontend
+    return {
+      success: true,
+      data: voterCodes.map(({ _plain, _privateKey }) => ({ code: _plain, privateKey: _privateKey })),
+    };
   } catch (error) {
-    console.error("Add voters error:", error)
-    return { success: false, error: "Failed to add voters" }
+    console.error("Add voters error:", error);
+    return { success: false, error: "Failed to add voters" };
   }
 }
 

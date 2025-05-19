@@ -64,7 +64,7 @@ export default function CreateElectionPage() {
   const [createdElection, setCreatedElection] = useState<Election | null>(null);
   const [generatedCodes, setGeneratedCodes] = useState<{
     electionCode: string;
-    voterCodes: string[];
+    voterCodes: { code: string; privateKey: string }[];
   }>({
     electionCode: "",
     voterCodes: [],
@@ -146,8 +146,9 @@ export default function CreateElectionPage() {
     doc.text("Daftar Kode Pemilih:", 14, 42);
 
     doc.setFontSize(12);
-    generatedCodes.voterCodes.forEach((code, idx) => {
-      doc.text(`Pemilih #${idx + 1}: ${code}`, 14, 52 + idx * 8);
+    generatedCodes.voterCodes.forEach((v, idx) => {
+      doc.text(`Pemilih #${idx + 1}: Kode: ${v.code}`, 14, 52 + idx * 12);
+      doc.text(`Private Key: ${v.privateKey}`, 14, 58 + idx * 12);
     });
 
     doc.save("kode-pemilihan.pdf");
@@ -254,10 +255,11 @@ export default function CreateElectionPage() {
             "Election created but failed to add voters: " + votersResult.error,
         });
       } else {
+        // votersResult.data sudah array of { code, privateKey }
         setGeneratedCodes((prev) => ({
           ...prev,
           voterCodes: Array.isArray(votersResult.data)
-            ? votersResult.data.map((v) => v.code)
+            ? votersResult.data
             : [],
         }));
       }
@@ -403,16 +405,21 @@ export default function CreateElectionPage() {
                 </p>
               </div>
               <div>
-                <Label className="text-sm text-gray-500">Kode Pemilih</Label>
+                <Label className="text-sm text-gray-500">
+                  Kode & Private Key Pemilih
+                </Label>
                 <div className="max-h-40 overflow-y-auto p-3 bg-white border rounded-md">
                   <ul className="space-y-2">
-                    {generatedCodes.voterCodes.map((code, index) => (
+                    {generatedCodes.voterCodes.map((v, index) => (
                       <li
                         key={index}
-                        className="font-mono flex justify-between"
+                        className="font-mono flex flex-col md:flex-row md:justify-between"
                       >
                         <span>Pemilih #{index + 1}</span>
-                        <span className="font-bold">{code}</span>
+                        <span className="font-bold">Kode: {v.code}</span>
+                        <span className="font-bold text-xs break-all">
+                          Private Key: {v.privateKey}
+                        </span>
                       </li>
                     ))}
                   </ul>

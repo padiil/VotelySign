@@ -27,6 +27,7 @@ export default function VotePage() {
   );
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [voteSubmitted, setVoteSubmitted] = useState(false);
+  const [privateKey, setPrivateKey] = useState("");
 
   type Candidate = {
     id: string;
@@ -161,10 +162,7 @@ export default function VotePage() {
     setIsSubmitting(true);
 
     try {
-      // Generate a simple signature (in a real app, this would be a proper digital signature)
-      const signature = `${voter.id}-${selectedCandidate.id}-${Date.now()}`;
-
-      const result = await castVote(voter.id, selectedCandidate.id, signature);
+      const result = await castVote(voter.id, selectedCandidate.id, privateKey);
 
       if (!result.success) {
         toast({
@@ -345,6 +343,29 @@ export default function VotePage() {
               />
             ))}
           </div>
+
+          {voterVerified && (
+            <div className="mb-6">
+              <label
+                htmlFor="privateKey"
+                className="block text-sm font-medium mb-1"
+              >
+                Private Key
+              </label>
+              <Input
+                id="privateKey"
+                placeholder="Masukkan private key Anda"
+                value={privateKey}
+                onChange={(e) => setPrivateKey(e.target.value)}
+                className="w-full"
+                required
+              />
+              <p className="text-xs text-gray-500 mt-1">
+                Private key didapat dari admin/panitia. Copy-paste persis sesuai
+                yang diberikan.
+              </p>
+            </div>
+          )}
 
           {voterVerified && (
             <div className="text-center mt-8">
