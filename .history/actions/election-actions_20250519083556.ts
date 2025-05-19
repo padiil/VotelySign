@@ -51,44 +51,30 @@ function formatCandidate(candidate: any): Candidate {
 // Create a new election
 export async function createElection(formData: FormData) {
   try {
-    const db = createServerDbClient();
-
-    // Extract values from FormData
-    const title = formData.get("title") as string;
-    const description = formData.get("description") as string;
-    const start_time = new Date(formData.get("start_time") as string);
-    const end_time = new Date(formData.get("end_time") as string);
-    const showRealTimeResults = formData.get("showRealTimeResults") === "true";
-    const banner_url = (formData.get("banner_url") as string) || null;
-
-    // Generate a random election code
-    const electionCode = generateRandomCode(8);
-
-    // Insert the election into the database
-    const [election] = await db
-      .insert(elections)
-      .values({
-        title,
-        description,
-        start_time,
-        end_time,
-        code: electionCode,
-        // show_real_time_results: showRealTimeResults, // Removed because not in schema
-      })
-      .returning();
-
-    return {
-      success: true,
-      data: formatElection(election),
-    };
+    const db = createServerDbClient()
+    const title = formData.get("title") as string
+    const description = formData.get("description") as string
+    const start_time = formData.get("start_time") as string
+    const end_time = formData.get("end_time") as string
+    if (!title || !start_time || !end_time) {
+      return { success: false, error: "Missing required fields" }
+    }
+    const code = generateRandomCode(8)
+    const [data] = await db.insert(elections).values({
+      title,
+      description,
+      start_time: new Date(start_time),
+      end_time: new Date(end_time),
+      code,
+    }).returning()
+    revalidatePath("/create")
+    return { success: true, data: formatElection(data) }
   } catch (error) {
-    console.error("Error creating election:", error);
-    return {
-      success: false,
-      error: "An unexpected error occurred",
-    };
+    console.error("Create election error:", error)
+    return { success: false, error: "Failed to create election" }
   }
 }
+
 // Get election by code
 export async function getElectionByCode(code: string) {
   try {

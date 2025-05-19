@@ -73,7 +73,8 @@ export async function createElection(formData: FormData) {
         start_time,
         end_time,
         code: electionCode,
-        // show_real_time_results: showRealTimeResults, // Removed because not in schema
+        banner_url,
+        showRealTimeResults,
       })
       .returning();
 

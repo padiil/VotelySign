@@ -29,7 +29,6 @@ import { useRouter } from "next/navigation";
 import { toast } from "@/components/ui/use-toast";
 import type { Election } from "@/types";
 import { jsPDF } from "jspdf";
-import { uploadToCloudinary } from "@/utils/cloudinary";
 
 export default function CreateElectionPage() {
   const router = useRouter();
@@ -158,26 +157,15 @@ export default function CreateElectionPage() {
     setIsSubmitting(true);
 
     try {
-      // Upload banner to Cloudinary if exists
-      let bannerUrl = null;
-      if (electionData.banner) {
-        bannerUrl = await uploadToCloudinary(electionData.banner, "banner");
-      }
-
       // Create a FormData object for the election
       const formData = new FormData();
       formData.append("title", electionData.title);
       formData.append("description", electionData.description);
       formData.append("start_time", electionData.start_time);
       formData.append("end_time", electionData.end_time);
-      formData.append(
-        "showRealTimeResults",
-        String(electionData.showRealTimeResults)
-      );
 
-      // Add banner URL instead of file
-      if (bannerUrl) {
-        formData.append("banner_url", bannerUrl);
+      if (electionData.banner) {
+        formData.append("banner", electionData.banner);
       }
 
       // Create the election
@@ -203,29 +191,20 @@ export default function CreateElectionPage() {
         setIsSubmitting(false);
         return;
       }
-
       setCreatedElection(election);
       setGeneratedCodes((prev) => ({
         ...prev,
         electionCode: election.code,
       }));
 
-      // Upload candidate photos and add candidates
-      const candidatesToAdd = await Promise.all(
-        electionData.candidates.map(async (candidate) => {
-          let photoUrl = undefined;
-
-          if (candidate.photo) {
-            photoUrl = await uploadToCloudinary(candidate.photo, "candidate");
-          }
-
-          return {
-            name: candidate.name,
-            photo_url: photoUrl,
-            description: candidate.description,
-          };
-        })
-      );
+      // Add candidates
+      const candidatesToAdd = electionData.candidates.map((candidate) => ({
+        name: candidate.name,
+        photo_url: candidate.photo
+          ? URL.createObjectURL(candidate.photo)
+          : undefined,
+        description: candidate.description,
+      }));
 
       const candidatesResult = await addCandidates(
         election.id,

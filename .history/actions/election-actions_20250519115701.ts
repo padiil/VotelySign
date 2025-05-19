@@ -51,44 +51,26 @@ function formatCandidate(candidate: any): Candidate {
 // Create a new election
 export async function createElection(formData: FormData) {
   try {
-    const db = createServerDbClient();
-
-    // Extract values from FormData
-    const title = formData.get("title") as string;
-    const description = formData.get("description") as string;
-    const start_time = new Date(formData.get("start_time") as string);
-    const end_time = new Date(formData.get("end_time") as string);
-    const showRealTimeResults = formData.get("showRealTimeResults") === "true";
-    const banner_url = (formData.get("banner_url") as string) || null;
-
-    // Generate a random election code
-    const electionCode = generateRandomCode(8);
-
-    // Insert the election into the database
-    const [election] = await db
-      .insert(elections)
-      .values({
-        title,
-        description,
-        start_time,
-        end_time,
-        code: electionCode,
-        // show_real_time_results: showRealTimeResults, // Removed because not in schema
-      })
-      .returning();
-
-    return {
-      success: true,
-      data: formatElection(election),
-    };
+    // If your API expects a JSON payload instead of FormData
+    // You might need to convert FormData to a plain object
+    const response = await fetch('/api/elections', {
+      method: 'POST',
+      body: formData,
+    });
+    
+    const data = await response.json();
+    
+    if (!response.ok) {
+      return { success: false, error: data.message || 'Failed to create election' };
+    }
+    
+    return { success: true, data: data.election };
   } catch (error) {
-    console.error("Error creating election:", error);
-    return {
-      success: false,
-      error: "An unexpected error occurred",
-    };
+    console.error('Error creating election:', error);
+    return { success: false, error: 'An unexpected error occurred' };
   }
 }
+
 // Get election by code
 export async function getElectionByCode(code: string) {
   try {
