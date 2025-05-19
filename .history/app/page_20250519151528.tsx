@@ -23,7 +23,7 @@ export default function Home() {
             </Button>
           </Link>
 
-          <Link href="/live-count" className="w-full">
+          <Link href="/live-countt" className="w-full">
             <Button
               variant="secondary"
               className="w-full h-24 text-xl bg-purple-500 hover:bg-purple-600 text-white rounded-xl shadow-lg transition-all"
