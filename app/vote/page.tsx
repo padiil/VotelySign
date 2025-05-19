@@ -4,7 +4,7 @@ import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent } from "@/components/ui/card";
-import { ArrowLeft, CheckCircle, Loader2 } from "lucide-react";
+import { ArrowLeft, CheckCircle, Loader2, Lock } from "lucide-react";
 import Link from "next/link";
 import CandidateCard from "@/components/candidate-card";
 import VotingResults from "@/components/voting-results";
@@ -13,6 +13,8 @@ import { getElectionByCode } from "@/actions/election-actions";
 import { verifyVoterCode, castVote } from "@/actions/voter-actions";
 import { toast } from "@/components/ui/use-toast";
 import { useRouter } from "next/navigation";
+import ElectionDetails from "@/components/election-details";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 
 export default function VotePage() {
   const router = useRouter();
@@ -43,6 +45,7 @@ export default function VotePage() {
     code: string;
     banner_url?: string;
     created_at: string;
+    showRealTimeResults?: boolean;
   };
 
   const [election, setElection] = useState<Election | null>(null);
@@ -364,6 +367,69 @@ export default function VotePage() {
               </p>
             </div>
           )}
+
+          {/* Tabs Ringkasan & Hasil Pemilihan */}
+          <Tabs defaultValue="overview" className="mb-6">
+            <TabsList className="grid w-full grid-cols-2">
+              <TabsTrigger value="overview">Ringkasan</TabsTrigger>
+              <TabsTrigger value="results">Hasil Pemilihan</TabsTrigger>
+            </TabsList>
+            <TabsContent value="overview">
+              <ElectionDetails
+                election={{
+                  ...election,
+                  banner: election?.banner_url,
+                }}
+              />
+            </TabsContent>
+            <TabsContent value="results">
+              <Card>
+                <CardContent className="pt-6">
+                  <h3 className="text-lg font-semibold mb-4">
+                    Hasil Pemilihan Real-time
+                  </h3>
+                  {election && election.showRealTimeResults !== false ? (
+                    <div className="space-y-4">
+                      {election.candidates.map((candidate, index) => (
+                        <div
+                          key={candidate.id}
+                          className="flex items-center justify-between"
+                        >
+                          <div className="flex items-center">
+                            <div className="w-10 h-10 bg-gray-200 rounded-full mr-3"></div>
+                            <span>
+                              {candidate.name || `Kandidat #${index + 1}`}
+                            </span>
+                          </div>
+                          <div className="flex items-center">
+                            <div className="w-48 h-4 bg-gray-100 rounded-full overflow-hidden mr-3">
+                              <div
+                                className="h-full bg-emerald-500"
+                                style={{
+                                  width: `${Math.floor(Math.random() * 100)}%`,
+                                }}
+                              ></div>
+                            </div>
+                            <span className="font-semibold">
+                              {Math.floor(Math.random() * 100)} suara
+                            </span>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  ) : (
+                    <div className="text-center py-6">
+                      <Lock className="mx-auto h-10 w-10 text-gray-400 mb-3" />
+                      <p className="text-gray-600">
+                        Hasil pemilihan akan disembunyikan hingga periode
+                        pemilihan berakhir.
+                      </p>
+                    </div>
+                  )}
+                </CardContent>
+              </Card>
+            </TabsContent>
+          </Tabs>
         </>
       )}
     </div>

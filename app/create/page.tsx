@@ -28,6 +28,7 @@ import {
 import { useRouter } from "next/navigation";
 import { toast } from "@/components/ui/use-toast";
 import type { Election } from "@/types";
+import { jsPDF } from "jspdf";
 
 export default function CreateElectionPage() {
   const router = useRouter();
@@ -131,6 +132,24 @@ export default function CreateElectionPage() {
         banner: e.target.files[0],
       });
     }
+  };
+
+  const handleExportPDF = () => {
+    const doc = new jsPDF();
+    doc.setFontSize(18);
+    doc.text("Kode Pemilihan", 14, 18);
+    doc.setFontSize(14);
+    doc.text(generatedCodes.electionCode, 14, 28);
+
+    doc.setFontSize(16);
+    doc.text("Daftar Kode Pemilih:", 14, 42);
+
+    doc.setFontSize(12);
+    generatedCodes.voterCodes.forEach((code, idx) => {
+      doc.text(`Pemilih #${idx + 1}: ${code}`, 14, 52 + idx * 8);
+    });
+
+    doc.save("kode-pemilihan.pdf");
   };
 
   const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
@@ -245,69 +264,8 @@ export default function CreateElectionPage() {
           </Button>
         </Link>
 
-        {electionData.banner && (
-          <div className="mb-6 rounded-lg overflow-hidden shadow-md">
-            <div className="relative w-full h-48">
-              <Image
-                src={
-                  URL.createObjectURL(electionData.banner) || "/placeholder.svg"
-                }
-                alt="Banner pemilihan"
-                fill
-                className="object-cover"
-              />
-              <div className="absolute inset-0 bg-gradient-to-t from-black/60 to-transparent"></div>
-              <div className="absolute bottom-0 left-0 p-4 text-white">
-                <h2 className="text-2xl font-bold">{electionData.title}</h2>
-              </div>
-            </div>
-          </div>
-        )}
-
-        <Card className="mb-6">
-          <CardContent className="pt-6">
-            <h2 className="text-2xl font-bold mb-4 text-center">
-              Pemilihan Berhasil Dibuat!
-            </h2>
-
-            <div className="mb-6 p-4 bg-gray-50 rounded-lg border">
-              <div className="mb-4">
-                <Label className="text-sm text-gray-500">Kode Pemilihan</Label>
-                <div className="text-2xl font-mono font-bold text-center p-3 bg-white border rounded-md">
-                  {generatedCodes.electionCode}
-                </div>
-                <p className="text-sm text-gray-500 mt-1 text-center">
-                  Bagikan kode ini kepada pemilih untuk mengakses pemilihan
-                </p>
-              </div>
-
-              <div>
-                <Label className="text-sm text-gray-500">Kode Pemilih</Label>
-                <div className="max-h-40 overflow-y-auto p-3 bg-white border rounded-md">
-                  <ul className="space-y-2">
-                    {generatedCodes.voterCodes.map((code, index) => (
-                      <li
-                        key={index}
-                        className="font-mono flex justify-between"
-                      >
-                        <span>Pemilih #{index + 1}</span>
-                        <span className="font-bold">{code}</span>
-                      </li>
-                    ))}
-                  </ul>
-                </div>
-                <div className="flex justify-center mt-4">
-                  <Button variant="outline" size="sm">
-                    <Upload className="mr-2 h-4 w-4" />
-                    Ekspor sebagai PDF
-                  </Button>
-                </div>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-
-        <Tabs defaultValue="overview">
+        {/* Tabs Ringkasan & Hasil Pemilihan dipindah ke atas */}
+        <Tabs defaultValue="overview" className="mb-6">
           <TabsList className="grid w-full grid-cols-2">
             <TabsTrigger value="overview">Ringkasan</TabsTrigger>
             <TabsTrigger value="results">Hasil Pemilihan</TabsTrigger>
@@ -406,6 +364,48 @@ export default function CreateElectionPage() {
             </Card>
           </TabsContent>
         </Tabs>
+
+        {/* Card kode pemilihan & kode pemilih */}
+        <Card className="mb-6">
+          <CardContent className="pt-6">
+            <h2 className="text-2xl font-bold mb-4 text-center">
+              Pemilihan Berhasil Dibuat!
+            </h2>
+            <div className="mb-6 p-4 bg-gray-50 rounded-lg border">
+              <div className="mb-4">
+                <Label className="text-sm text-gray-500">Kode Pemilihan</Label>
+                <div className="text-2xl font-mono font-bold text-center p-3 bg-white border rounded-md">
+                  {generatedCodes.electionCode}
+                </div>
+                <p className="text-sm text-gray-500 mt-1 text-center">
+                  Bagikan kode ini kepada pemilih untuk mengakses pemilihan
+                </p>
+              </div>
+              <div>
+                <Label className="text-sm text-gray-500">Kode Pemilih</Label>
+                <div className="max-h-40 overflow-y-auto p-3 bg-white border rounded-md">
+                  <ul className="space-y-2">
+                    {generatedCodes.voterCodes.map((code, index) => (
+                      <li
+                        key={index}
+                        className="font-mono flex justify-between"
+                      >
+                        <span>Pemilih #{index + 1}</span>
+                        <span className="font-bold">{code}</span>
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+                <div className="flex justify-center mt-4">
+                  <Button variant="outline" size="sm" onClick={handleExportPDF}>
+                    <Upload className="mr-2 h-4 w-4" />
+                    Ekspor sebagai PDF
+                  </Button>
+                </div>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
       </div>
     );
   }
