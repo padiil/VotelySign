@@ -57,7 +57,7 @@ export async function createVoteTransaction(
     .digest("hex");
   const signature = await schnorrSign(messageHash, voterPrivateKey);
 
-  // Generate bulletproof (nyata/template)
+  // Generate bulletproof (ZKP nyata)
   const bulletproof = await generateBulletproof(candidateId);
 
   // Generate nullifier to prevent double voting

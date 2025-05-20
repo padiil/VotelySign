@@ -147,7 +147,8 @@ export async function addVoters(electionId: string, voterCount: number) {
       // Generate private key (32 bytes hex)
       const privateKey = randomBytes(32).toString("hex");
       // Generate public key (hex)
-      const publicKey = schnorr.getPublicKey(privateKey);
+      const publicKeyBytes = schnorr.getPublicKey(privateKey);
+      const publicKey = Buffer.from(publicKeyBytes).toString("hex");
       return {
         election_id: Number(electionId),
         code: codeHash,

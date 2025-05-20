@@ -1,18 +1,32 @@
 import { schnorr } from "@noble/curves/secp256k1";
 // @ts-expect-error: snarkjs has no types
 import * as snarkjs from "snarkjs";
+import fs from "fs";
+import path from "path";
+
+// --- CACHE WASM & ZKEY BUFFER ---
+let wasmBuffer: Buffer | null = null;
+let zkeyBuffer: Buffer | null = null;
+
+function getWasmBuffer() {
+  if (!wasmBuffer) {
+    wasmBuffer = fs.readFileSync(path.resolve(process.cwd(), "zkp/vote_range.wasm"));
+  }
+  return wasmBuffer;
+}
+
+function getZkeyBuffer() {
+  if (!zkeyBuffer) {
+    zkeyBuffer = fs.readFileSync(path.resolve(process.cwd(), "zkp/proving_key.zkey"));
+  }
+  return zkeyBuffer;
+}
 
 function isValidHexPrivateKey(key: string): boolean {
   // 32 bytes = 64 hex chars
   return typeof key === "string" && /^[0-9a-fA-F]{64}$/.test(key);
 }
 
-/**
- * Schnorr signature using @noble/curves/secp256k1
- * @param messageHex - Hex string of the message hash (32 bytes)
- * @param privateKeyHex - Hex string of the private key (32 bytes)
- * @returns Hex string of the Schnorr signature
- */
 export async function schnorrSign(messageHex: string, privateKeyHex: string): Promise<string> {
   if (!isValidHexPrivateKey(privateKeyHex)) {
     throw new Error("Invalid private key: must be 32 bytes hex string");
@@ -23,13 +37,30 @@ export async function schnorrSign(messageHex: string, privateKeyHex: string): Pr
 }
 
 /**
- * Generate a zero-knowledge proof (ZKP) using snarkjs (template for Bulletproofs-like proof)
- * @param value - Value to prove (e.g., candidateId)
- * @returns Stringified proof (for now, placeholder)
+ * Generate a real ZKP proof using snarkjs (Bulletproofs-like)
+ * Uses path string to .wasm and .zkey for performance
  */
-export async function generateBulletproof(value: number): Promise<string> {
-  // TODO: Implement real ZKP circuit and proof generation with snarkjs
-  // Example: const proof = await snarkjs.groth16.fullProve({ in: value }, "circuit.wasm", "proving_key.zkey");
-  // return JSON.stringify(proof);
-  return `bulletproof-proof-for-${value}`;
+export async function generateBulletproof(candidateId: number): Promise<string> {
+  // Pastikan input ke circuit adalah number
+  const input = { x: Number(candidateId), min: 1, max: 100 };
+  console.log('[ZKP] Input to fullProve:', input);
+
+  let seconds = 0;
+  const interval = setInterval(() => {
+    seconds++;
+    console.log(`[ZKP] Generating proof... ${seconds} detik berlalu`);
+  }, 1000);
+
+  console.time("ZKP fullProve");
+  console.log("[ZKP] Mulai generate proof untuk candidateId:", candidateId);
+  // GUNAKAN PATH STRING, BUKAN BUFFER
+  const { proof, publicSignals } = await snarkjs.groth16.fullProve(
+    input,
+    path.resolve(process.cwd(), "zkp/vote_range.wasm"),
+    path.resolve(process.cwd(), "zkp/proving_key.zkey")
+  );
+  clearInterval(interval);
+  console.timeEnd("ZKP fullProve");
+  console.log("[ZKP] Proof selesai. Panjang proof:", JSON.stringify(proof).length, "publicSignals:", publicSignals);
+  return JSON.stringify({ proof, publicSignals });
 }
