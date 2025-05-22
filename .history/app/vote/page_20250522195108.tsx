@@ -17,7 +17,6 @@ import ElectionDetails from "@/components/election-details";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { sendVoteToBlockchain, getVotesCountFromBlockchain } from "@/lib/eth-voting";
 import { schnorrSign } from "@/lib/crypto";
-import CountdownTimer from "@/components/countdown-timer";
 
 export default function VotePage() {
   const router = useRouter();
