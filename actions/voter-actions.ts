@@ -112,3 +112,27 @@ export async function getVoterStatus(voterId: string): Promise<{ success: boolea
     return { success: false, error: "Failed to get voter status" };
   }
 }
+
+// Mengecek apakah kode pemilih sudah digunakan untuk voting
+export async function checkVoterHasVoted({ kodePemilih, electionId }: { kodePemilih: string, electionId: string }) {
+  const db = createServerDbClient();
+  // Hash kode pemilih agar sama dengan yang di DB
+  const kodeHash = crypto.createHash("sha256").update(kodePemilih).digest("hex");
+  // Gabungkan kondisi dengan and()
+  const voterArr = await db.select().from(voters)
+    .where(and(eq(voters.code, kodeHash), eq(voters.election_id, Number(electionId))));
+  if (!voterArr.length) {
+    return { success: false, error: "Kode pemilih tidak ditemukan." };
+  }
+  const voter = voterArr[0];
+  // Gunakan nullifier_hash untuk pengecekan double voting
+  if (!voter.nullifier_hash) {
+    return { success: false, error: "Data nullifier_hash tidak ditemukan untuk pemilih ini." };
+  }
+  const txArr = await db.select().from(vote_transactions)
+    .where(eq(vote_transactions.nullifier_hash, voter.nullifier_hash));
+  if (txArr.length > 0) {
+    return { success: false, error: "Kamu sudah melakukan voting, tidak bisa vote dua kali." };
+  }
+  return { success: true, voter };
+}
