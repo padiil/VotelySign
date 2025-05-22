@@ -14,23 +14,8 @@ import ElectionCodeForm from "@/components/live-count/election-code-form";
 import VoteDistributionChart from "@/components/live-count/vote-distribution-chart";
 import ElectionStats from "@/components/live-count/election-stats";
 import LiveUpdates from "@/components/live-count/live-updates";
-import CandidateDetails from "@/components/live-count/candidate-details";
-import VotingTrends from "@/components/live-count/voting-trends";
-import ElectionTiming from "@/components/live-count/election-timing";
-import {
-  Card,
-  CardHeader,
-  CardTitle,
-  CardDescription,
-  CardContent,
-  CardFooter,
-} from "@/components/ui/card";
-import { LockKeyhole } from "lucide-react";
-import {
-  Collapsible,
-  CollapsibleTrigger,
-  CollapsibleContent,
-} from "@/components/ui/collapsible";
+import { LoadingSpinner } from "@/components/ui/loading-spinner";
+import { Breadcrumbs } from "@/components/ui/breadcrumbs";
 
 export default function LiveCountPage() {
   const [election, setElection] = useState<any>(null);
@@ -60,7 +45,6 @@ export default function LiveCountPage() {
 
       if (response.success && response.data) {
         setElection(response.data);
-        console.log("Election data:", response.data); // Debug log to check structure
       } else {
         setError(response.error || "Invalid election code");
       }
@@ -129,79 +113,53 @@ export default function LiveCountPage() {
   // The rest of your component remains the same...
   if (!election) {
     return (
-      <Card>
-        <CardHeader>
-          <CardTitle>Enter Election Code</CardTitle>
-          <CardDescription>
-            The election code was provided in your election PDF
-          </CardDescription>
-        </CardHeader>
-        <CardContent>
-          <ElectionCodeForm
-            onSubmit={handleSubmitCode}
-            isLoading={loading}
-            error={error}
-          />
-        </CardContent>
-        <CardFooter className="flex-col space-y-3 border-t pt-4">
-          <div className="flex items-center text-xs text-muted-foreground">
-            <LockKeyhole className="h-3 w-3 mr-1" />
-            Results are only accessible with a valid election code
-          </div>
-          <Collapsible className="w-full">
-            <CollapsibleTrigger className="text-xs text-blue-500 hover:underline">
-              Don't have an election code?
-            </CollapsibleTrigger>
-            <CollapsibleContent className="text-xs text-gray-600 pt-2">
-              <p>Election codes are provided when an election is created.</p>
-              <ul className="list-disc pl-4 mt-2">
-                <li>If you're an organizer, check your election PDF</li>
-                <li>If you're a voter, ask your election administrator</li>
-                <li>You can create your own election from the home page</li>
-              </ul>
-            </CollapsibleContent>
-          </Collapsible>
-        </CardFooter>
-      </Card>
+      <ElectionCodeForm
+        onSubmit={handleSubmitCode}
+        isLoading={loading}
+        error={error}
+      />
     );
   }
 
   return (
     <div className="container py-8">
-      <motion.div
-        initial={{ opacity: 0, y: -20 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ duration: 0.5 }}
-      >
-        <div className="flex justify-between items-center flex-wrap gap-2 mb-2">
-          <h1 className="text-4xl font-bold">Live Vote Count</h1>
-          <Badge variant="outline" className="text-sm">
-            Election Code: {electionCode}
-          </Badge>
-        </div>
-        <h2 className="text-2xl font-semibold mb-6">{election.title}</h2>
-        <p className="text-muted-foreground mb-8">
-          Real-time election results and statistics
-        </p>
-      </motion.div>
+      <Breadcrumbs
+        items={[
+          { label: "Home", href: "/" },
+          { label: "Live Count" }
+        ]}
+      />
+      
+      {loading ? (
+        <LoadingSpinner 
+          message="Connecting to blockchain..." 
+          submessage="Retrieving secure voting data" 
+        />
+      ) : (
+        <motion.div
+          initial={{ opacity: 0, y: -20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.5 }}
+        >
+          <div className="flex justify-between items-center flex-wrap gap-2 mb-2">
+            <h1 className="text-4xl font-bold">Live Vote Count</h1>
+            <Badge variant="outline" className="text-sm">
+              Election Code: {electionCode}
+            </Badge>
+          </div>
+          <h2 className="text-2xl font-semibold mb-6">{election.title}</h2>
+          <p className="text-muted-foreground mb-8">
+            Real-time election results and statistics
+          </p>
+        </motion.div>
 
-      <Tabs defaultValue="overview" className="mb-8">
-        <TabsList>
-          <TabsTrigger value="overview">Overview</TabsTrigger>
-          <TabsTrigger value="details">Details</TabsTrigger>
-          <TabsTrigger value="trends">Trends</TabsTrigger>
-        </TabsList>
-        <TabsContent value="overview">
-          <div className="space-y-6">
-            {/* Election Timing Card */}
-            <div>
-              <ElectionTiming
-                startTime={election?.start_time}
-                endTime={election?.end_time}
-              />
-            </div>
-
-            {/* Stats Cards Grid */}
+        <Tabs defaultValue="overview" className="mb-8">
+          <TabsList>
+            <TabsTrigger value="overview">Overview</TabsTrigger>
+            <TabsTrigger value="details">Details</TabsTrigger>
+            <TabsTrigger value="trends">Trends</TabsTrigger>
+          </TabsList>
+          <TabsContent value="overview">
             <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
               <VoteDistributionChart
                 data={results}
@@ -211,7 +169,6 @@ export default function LiveCountPage() {
                 data={results}
                 lastUpdated={lastUpdated}
                 loading={isFetching && results.length === 0}
-                totalVoters={election?.voters_count}
               />
               <LiveUpdates
                 data={results}
@@ -220,37 +177,15 @@ export default function LiveCountPage() {
                 loading={isFetching && results.length === 0}
               />
             </div>
-          </div>
-        </TabsContent>
-        <TabsContent value="details">
-          <CandidateDetails
-            candidates={election.candidates}
-            data={results}
-            totalVoters={election?.voters_count}
-          />
-        </TabsContent>
-        <TabsContent value="trends">
-          <VotingTrends
-            data={results}
-            totalVoters={election?.voters_count}
-            snapshots={
-              lastUpdated && results.length > 0
-                ? [
-                    {
-                      timestamp: lastUpdated,
-                      results: results.map((r: any) => ({
-                        candidateId: r.candidate?.id ?? r.candidateId ?? "",
-                        candidateName:
-                          r.candidate?.name ?? r.candidateName ?? "",
-                        voteCount: r.voteCount ?? 0,
-                      })),
-                    },
-                  ]
-                : []
-            }
-          />
-        </TabsContent>
-      </Tabs>
+          </TabsContent>
+          <TabsContent value="details">
+            <p>Detailed vote information will go here</p>
+          </TabsContent>
+          <TabsContent value="trends">
+            <p>Voting trends will go here</p>
+          </TabsContent>
+        </Tabs> 
+      )}
     </div>
   );
 }

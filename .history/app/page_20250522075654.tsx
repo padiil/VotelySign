@@ -19,35 +19,29 @@ export default function Home() {
           <Link href="/vote" className="w-full">
             <Button className="w-full h-24 text-xl bg-emerald-600 hover:bg-emerald-700 rounded-xl shadow-lg transition-all flex flex-col">
               <span>Go Vote</span>
-              <span className="text-xs mt-1 font-normal">
-                Cast your ballot securely
-              </span>
+              <span className="text-xs mt-1 font-normal">Cast your ballot securely</span>
               <ArrowRight className="ml-2 h-5 w-5 absolute right-4" />
             </Button>
           </Link>
-
+          
           <Link href="/live-count" className="w-full">
             <Button
               variant="secondary"
               className="w-full h-24 text-xl bg-purple-500 hover:bg-purple-600 text-white rounded-xl shadow-lg transition-all flex flex-col"
             >
               <span>Live Count</span>
-              <span className="text-xs mt-1 font-normal">
-                Monitor election results
-              </span>
+              <span className="text-xs mt-1 font-normal">Monitor election results</span>
               <BarChart2 className="ml-2 h-5 w-5 absolute right-4" />
             </Button>
           </Link>
-
+          
           <Link href="/create" className="w-full">
             <Button
               variant="outline"
               className="w-full h-24 text-xl border-2 border-gray-300 hover:border-gray-400 rounded-xl shadow-lg transition-all flex flex-col"
             >
               <span>Create Election</span>
-              <span className="text-xs mt-1 font-normal">
-                Set up your own ballot
-              </span>
+              <span className="text-xs mt-1 font-normal">Set up your own ballot</span>
               <ArrowRight className="ml-2 h-5 w-5 absolute right-4" />
             </Button>
           </Link>

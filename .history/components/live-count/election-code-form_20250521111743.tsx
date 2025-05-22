@@ -13,11 +13,7 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
-import {
-  Collapsible,
-  CollapsibleContent,
-  CollapsibleTrigger,
-} from "../ui/collapsible";
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "../ui/collapsible";
 
 interface ElectionCodeFormProps {
   onSubmit: (code: string) => Promise<void>;
@@ -62,27 +58,7 @@ export default function ElectionCodeForm({
         </CardHeader>
         <CardContent>
           <form onSubmit={handleSubmit} className="space-y-4">
-            <div className="space-y-2">
-              <Input
-                placeholder="e.g. 7J14UBIP"
-                value={electionCode}
-                onChange={(e) => setElectionCode(e.target.value)}
-                className="text-center text-xl font-mono tracking-wider uppercase"
-                maxLength={8}
-              />
-              {error && (
-                <p className="text-sm text-red-500 text-center">{error}</p>
-              )}
-            </div>
-            <Button type="submit" className="w-full" disabled={isLoading}>
-              {isLoading ? (
-                "Verifying..."
-              ) : (
-                <>
-                  View Results <ArrowRight className="ml-2 h-4 w-4" />
-                </>
-              )}
-            </Button>
+            {/* Form content */}
           </form>
         </CardContent>
         <CardFooter className="flex-col space-y-3 border-t pt-4">

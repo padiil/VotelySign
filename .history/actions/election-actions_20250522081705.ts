@@ -1,45 +1,40 @@
-"use server";
+"use server"
 
-import { createServerDbClient } from "@/lib/db";
-import { elections, candidates, voters, vote_transactions } from "@/lib/schema";
-import type { InferModel } from "drizzle-orm";
-import { sql } from "drizzle-orm";
-import crypto from "crypto";
+import { createServerDbClient } from "@/lib/db"
+import { elections, candidates, voters, vote_transactions } from "@/lib/schema"
+import type { InferModel } from "drizzle-orm"
+import { sql } from "drizzle-orm"
+import crypto from "crypto"
 import { schnorr } from "@noble/curves/secp256k1";
 import { randomBytes } from "crypto";
 
 // Ensure the Candidate type includes created_at
-type CandidateWithCreatedAt = InferModel<typeof candidates> & {
-  created_at?: Date;
-};
-import type { Election, ElectionWithCandidates, Candidate } from "@/types";
-import { revalidatePath } from "next/cache";
-import { eq } from "drizzle-orm";
+type CandidateWithCreatedAt = InferModel<typeof candidates> & { created_at?: Date }
+import type { Election, ElectionWithCandidates, Candidate } from "@/types"
+import { revalidatePath } from "next/cache"
+import { eq } from "drizzle-orm"
 
 // Generate a random code
 function generateRandomCode(length: number): string {
-  const chars = "ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789";
-  let result = "";
-  const randomBytes = crypto.randomBytes(length);
+  const chars = "ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789"
+  let result = ""
+  const randomBytes = crypto.randomBytes(length)
   for (let i = 0; i < length; i++) {
-    result += chars[randomBytes[i] % chars.length];
+    result += chars[randomBytes[i] % chars.length]
   }
-  return result;
+  return result
 }
 
 // Helper: Format election object
 function formatElection(election: any): Election {
   return {
+    ...election,
     id: String(election.id),
-    title: election.title,
-    description: election.description || "",
-    code: election.code,
-    // Make sure these are correctly formatted as ISO strings
-    start_time: election.start_time ? election.start_time.toISOString() : null,
-    end_time: election.end_time ? election.end_time.toISOString() : null,
+    description: election.description ?? "",
+    start_time: election.start_time ? election.start_time.toISOString() : "",
+    end_time: election.end_time ? election.end_time.toISOString() : "",
     created_at: election.created_at ? election.created_at.toISOString() : "",
-    // Other fields...
-  };
+  }
 }
 
 // Helper: Format candidate object
@@ -52,7 +47,7 @@ function formatCandidate(candidate: any): Candidate {
     photo_url: candidate.photo_url || undefined,
     description: candidate.description ?? "",
     created_at: candidate.created_at ? candidate.created_at.toISOString() : "",
-  };
+  }
 }
 
 // Create a new election
@@ -100,36 +95,36 @@ export async function createElection(formData: FormData) {
 export async function getElectionByCode(code: string) {
   try {
     const db = createServerDbClient();
-
+    
     // Get the election
     const [election] = await db
       .select()
       .from(elections)
       .where(eq(elections.code, code));
-
+    
     if (!election) {
       return { success: false, error: "Election not found" };
     }
-
+    
     // Get the candidates
     const candidatesData = await db
       .select()
       .from(candidates)
       .where(eq(candidates.election_id, election.id));
-
+    
     // Count the total voters for this election
     const [voterResult] = await db
       .select({ count: sql<number>`count(*)` })
       .from(voters)
       .where(eq(voters.election_id, election.id));
-
+    
     // Format the election with candidates and voter count
     const formattedElection = {
       ...formatElection(election),
       candidates: candidatesData.map(formatCandidate),
-      voters_count: Number(voterResult.count),
+      voters_count: Number(voterResult.count)
     };
-
+    
     return { success: true, data: formattedElection };
   } catch (error) {
     console.error("Get election by code error:", error);
@@ -140,25 +135,23 @@ export async function getElectionByCode(code: string) {
 // Add candidates to an election
 export async function addCandidates(
   electionId: string,
-  candidateInputs: Omit<Candidate, "id" | "election_id" | "created_at">[]
+  candidateInputs: Omit<Candidate, "id" | "election_id" | "created_at">[],
+
 ) {
   try {
-    const db = createServerDbClient();
+    const db = createServerDbClient()
     const candidatesToInsert = candidateInputs.map((c) => ({
       election_id: Number(electionId),
       name: c.name,
       photo_url: c.photo_url,
       description: c.description,
-    }));
-    const data = await db
-      .insert(candidates)
-      .values(candidatesToInsert)
-      .returning();
-    revalidatePath(`/election/${electionId}`);
-    return { success: true, data: data.map(formatCandidate) };
+    }))
+    const data = await db.insert(candidates).values(candidatesToInsert).returning()
+    revalidatePath(`/election/${electionId}`)
+    return { success: true, data: data.map(formatCandidate) }
   } catch (error) {
-    console.error("Add candidates error:", error);
-    return { success: false, error: "Failed to add candidates" };
+    console.error("Add candidates error:", error)
+    return { success: false, error: "Failed to add candidates" }
   }
 }
 
@@ -185,19 +178,12 @@ export async function addVoters(electionId: string, voterCount: number) {
     });
     // Insert hashed code & public key
     await db.insert(voters).values(
-      voterCodes.map(({ election_id, code, public_key }) => ({
-        election_id,
-        code,
-        public_key,
-      }))
+      voterCodes.map(({ election_id, code, public_key }) => ({ election_id, code, public_key }))
     );
     // Return plain codes & private keys for admin/frontend
     return {
       success: true,
-      data: voterCodes.map(({ _plain, _privateKey }) => ({
-        code: _plain,
-        privateKey: _privateKey,
-      })),
+      data: voterCodes.map(({ _plain, _privateKey }) => ({ code: _plain, privateKey: _privateKey })),
     };
   } catch (error) {
     console.error("Add voters error:", error);
@@ -208,46 +194,23 @@ export async function addVoters(electionId: string, voterCount: number) {
 // Get election results
 export async function getElectionResults(electionId: string) {
   try {
-    const db = createServerDbClient();
-    const candidatesData = await db
-      .select()
-      .from(candidates)
-      .where(eq(candidates.election_id, Number(electionId)));
+    const db = createServerDbClient()
+    const candidatesData = await db.select().from(candidates).where(eq(candidates.election_id, Number(electionId)))
     const results = await Promise.all(
       candidatesData.map(async (candidate) => {
         const [{ count }] = await db
           .select({ count: sql<number>`count(*)` })
           .from(vote_transactions)
-          .where(eq(vote_transactions.candidate_id, candidate.id));
+          .where(eq(vote_transactions.candidate_id, candidate.id))
         return {
           candidate: formatCandidate(candidate),
           voteCount: Number(count) || 0,
-        };
+        }
       })
-    );
-    return { success: true, data: results };
+    )
+    return { success: true, data: results }
   } catch (error) {
-    console.error("Get election results error:", error);
-    return { success: false, error: "Failed to fetch election results" };
-  }
-}
-// In election-actions.ts:
-export async function getVoteTimestamps(electionId: string) {
-  try {
-    const db = createServerDbClient();
-    const voteTimestamps = await db
-      .select({ timestamp: vote_transactions.timestamp })
-      .from(vote_transactions)
-      .innerJoin(voters, eq(vote_transactions.id, voters.id))
-      .where(eq(voters.election_id, Number(electionId)))
-      .orderBy(vote_transactions.timestamp);
-    
-    return { 
-      success: true, 
-      data: voteTimestamps.map(v => v.timestamp) 
-    };
-  } catch (error) {
-    console.error("Get vote timestamps error:", error);
-    return { success: false, error: "Failed to fetch vote timestamps" };
+    console.error("Get election results error:", error)
+    return { success: false, error: "Failed to fetch election results" }
   }
 }

@@ -30,15 +30,12 @@ function generateRandomCode(length: number): string {
 // Helper: Format election object
 function formatElection(election: any): Election {
   return {
+    ...election,
     id: String(election.id),
-    title: election.title,
-    description: election.description || "",
-    code: election.code,
-    // Make sure these are correctly formatted as ISO strings
-    start_time: election.start_time ? election.start_time.toISOString() : null,
-    end_time: election.end_time ? election.end_time.toISOString() : null,
+    description: election.description ?? "",
+    start_time: election.start_time ? election.start_time.toISOString() : "",
+    end_time: election.end_time ? election.end_time.toISOString() : "",
     created_at: election.created_at ? election.created_at.toISOString() : "",
-    // Other fields...
   };
 }
 
@@ -184,13 +181,15 @@ export async function addVoters(electionId: string, voterCount: number) {
       };
     });
     // Insert hashed code & public key
-    await db.insert(voters).values(
-      voterCodes.map(({ election_id, code, public_key }) => ({
-        election_id,
-        code,
-        public_key,
-      }))
-    );
+    await db
+      .insert(voters)
+      .values(
+        voterCodes.map(({ election_id, code, public_key }) => ({
+          election_id,
+          code,
+          public_key,
+        }))
+      );
     // Return plain codes & private keys for admin/frontend
     return {
       success: true,
@@ -229,25 +228,5 @@ export async function getElectionResults(electionId: string) {
   } catch (error) {
     console.error("Get election results error:", error);
     return { success: false, error: "Failed to fetch election results" };
-  }
-}
-// In election-actions.ts:
-export async function getVoteTimestamps(electionId: string) {
-  try {
-    const db = createServerDbClient();
-    const voteTimestamps = await db
-      .select({ timestamp: vote_transactions.timestamp })
-      .from(vote_transactions)
-      .innerJoin(voters, eq(vote_transactions.id, voters.id))
-      .where(eq(voters.election_id, Number(electionId)))
-      .orderBy(vote_transactions.timestamp);
-    
-    return { 
-      success: true, 
-      data: voteTimestamps.map(v => v.timestamp) 
-    };
-  } catch (error) {
-    console.error("Get vote timestamps error:", error);
-    return { success: false, error: "Failed to fetch vote timestamps" };
   }
 }

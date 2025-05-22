@@ -14,9 +14,6 @@ import ElectionCodeForm from "@/components/live-count/election-code-form";
 import VoteDistributionChart from "@/components/live-count/vote-distribution-chart";
 import ElectionStats from "@/components/live-count/election-stats";
 import LiveUpdates from "@/components/live-count/live-updates";
-import CandidateDetails from "@/components/live-count/candidate-details";
-import VotingTrends from "@/components/live-count/voting-trends";
-import ElectionTiming from "@/components/live-count/election-timing";
 import {
   Card,
   CardHeader,
@@ -60,7 +57,6 @@ export default function LiveCountPage() {
 
       if (response.success && response.data) {
         setElection(response.data);
-        console.log("Election data:", response.data); // Debug log to check structure
       } else {
         setError(response.error || "Invalid election code");
       }
@@ -192,63 +188,30 @@ export default function LiveCountPage() {
           <TabsTrigger value="trends">Trends</TabsTrigger>
         </TabsList>
         <TabsContent value="overview">
-          <div className="space-y-6">
-            {/* Election Timing Card */}
-            <div>
-              <ElectionTiming
-                startTime={election?.start_time}
-                endTime={election?.end_time}
-              />
-            </div>
-
-            {/* Stats Cards Grid */}
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-              <VoteDistributionChart
-                data={results}
-                loading={isFetching && results.length === 0}
-              />
-              <ElectionStats
-                data={results}
-                lastUpdated={lastUpdated}
-                loading={isFetching && results.length === 0}
-                totalVoters={election?.voters_count}
-              />
-              <LiveUpdates
-                data={results}
-                previousData={previousResults}
-                lastUpdated={lastUpdated}
-                loading={isFetching && results.length === 0}
-              />
-            </div>
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+            <VoteDistributionChart
+              data={results}
+              loading={isFetching && results.length === 0}
+            />
+            <ElectionStats
+              data={results}
+              lastUpdated={lastUpdated}
+              loading={isFetching && results.length === 0}
+              totalVoters={election.voters_count} // Pass the actual voter count from the election data
+            />
+            <LiveUpdates
+              data={results}
+              previousData={previousResults}
+              lastUpdated={lastUpdated}
+              loading={isFetching && results.length === 0}
+            />
           </div>
         </TabsContent>
         <TabsContent value="details">
-          <CandidateDetails
-            candidates={election.candidates}
-            data={results}
-            totalVoters={election?.voters_count}
-          />
+          <p>Detailed vote information will go here</p>
         </TabsContent>
         <TabsContent value="trends">
-          <VotingTrends
-            data={results}
-            totalVoters={election?.voters_count}
-            snapshots={
-              lastUpdated && results.length > 0
-                ? [
-                    {
-                      timestamp: lastUpdated,
-                      results: results.map((r: any) => ({
-                        candidateId: r.candidate?.id ?? r.candidateId ?? "",
-                        candidateName:
-                          r.candidate?.name ?? r.candidateName ?? "",
-                        voteCount: r.voteCount ?? 0,
-                      })),
-                    },
-                  ]
-                : []
-            }
-          />
+          <p>Voting trends will go here</p>
         </TabsContent>
       </Tabs>
     </div>

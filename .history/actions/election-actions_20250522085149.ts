@@ -238,7 +238,7 @@ export async function getVoteTimestamps(electionId: string) {
     const voteTimestamps = await db
       .select({ timestamp: vote_transactions.timestamp })
       .from(vote_transactions)
-      .innerJoin(voters, eq(vote_transactions.id, voters.id))
+      .innerJoin(voters, eq(vote_transactions.voter_id, voters.id))
       .where(eq(voters.election_id, Number(electionId)))
       .orderBy(vote_transactions.timestamp);
     

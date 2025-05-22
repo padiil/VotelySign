@@ -195,12 +195,12 @@ export default function LiveCountPage() {
           <div className="space-y-6">
             {/* Election Timing Card */}
             <div>
-              <ElectionTiming
-                startTime={election?.start_time}
+              <ElectionTiming 
+                startTime={election?.start_time} 
                 endTime={election?.end_time}
               />
             </div>
-
+            
             {/* Stats Cards Grid */}
             <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
               <VoteDistributionChart

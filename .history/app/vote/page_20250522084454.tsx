@@ -289,15 +289,7 @@ export default function VotePage() {
 
           <div className="mb-6">
             <h2 className="text-2xl font-bold mb-2">{election?.title}</h2>
-            <p className="text-gray-600 mb-1">{election?.description}</p>
-
-            {/* Add the inline timer here */}
-            <CountdownTimer
-              startTime={election?.start_time ?? null}
-              endTime={election?.end_time ?? null}
-              variant="inline"
-              className="text-gray-500"
-            />
+            <p className="text-gray-600">{election?.description}</p>
           </div>
 
           {electionFound && election && (
@@ -306,8 +298,8 @@ export default function VotePage() {
                 Election Timing
               </h3>
               <CountdownTimer
-                startTime={election?.start_time ?? null}
-                endTime={election?.end_time ?? null}
+                startTime={election?.start_time}
+                endTime={election?.end_time}
                 variant="compact"
               />
             </div>

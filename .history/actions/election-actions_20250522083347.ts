@@ -231,23 +231,3 @@ export async function getElectionResults(electionId: string) {
     return { success: false, error: "Failed to fetch election results" };
   }
 }
-// In election-actions.ts:
-export async function getVoteTimestamps(electionId: string) {
-  try {
-    const db = createServerDbClient();
-    const voteTimestamps = await db
-      .select({ timestamp: vote_transactions.timestamp })
-      .from(vote_transactions)
-      .innerJoin(voters, eq(vote_transactions.id, voters.id))
-      .where(eq(voters.election_id, Number(electionId)))
-      .orderBy(vote_transactions.timestamp);
-    
-    return { 
-      success: true, 
-      data: voteTimestamps.map(v => v.timestamp) 
-    };
-  } catch (error) {
-    console.error("Get vote timestamps error:", error);
-    return { success: false, error: "Failed to fetch vote timestamps" };
-  }
-}
