@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent } from "@/components/ui/card";
@@ -10,11 +10,13 @@ import CandidateCard from "@/components/candidate-card";
 import VotingResults from "@/components/voting-results";
 import Image from "next/image";
 import { getElectionByCode } from "@/actions/election-actions";
-import { verifyVoterCode, castVote } from "@/actions/voter-actions";
+import { verifyVoterCode, checkVoterHasVoted } from "@/actions/voter-actions";
 import { toast } from "@/components/ui/use-toast";
 import { useRouter } from "next/navigation";
 import ElectionDetails from "@/components/election-details";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { sendVoteToBlockchain, getVotesCountFromBlockchain } from "@/lib/eth-voting";
+import { schnorrSign } from "@/lib/crypto";
 
 export default function VotePage() {
   const router = useRouter();
@@ -155,36 +157,84 @@ export default function VotePage() {
   };
 
   const handleVoteSubmit = async () => {
-    if (!selectedCandidate || !voter) {
+    if (!selectedCandidate || !voter || !election?.id) {
       return;
     }
 
     setIsSubmitting(true);
 
     try {
-      const result = await castVote(voter.id, selectedCandidate.id, privateKey);
-
-      if (!result.success) {
+      // Cek status voting di backend sebelum submit ke blockchain
+      const check = await checkVoterHasVoted({ kodePemilih: voterCode, electionId: election.id });
+      if (!check.success) {
         toast({
           title: "Error",
-          description: result.error || "Failed to cast vote",
+          description: check.error || "Kamu sudah melakukan voting, tidak bisa vote dua kali.",
           variant: "destructive",
         });
+        setIsSubmitting(false);
         return;
       }
 
-      setVoteSubmitted(true);
-    } catch (error) {
-      console.error("Error casting vote:", error);
-      toast({
-        title: "Error",
-        description: "Failed to cast vote. Please try again.",
-        variant: "destructive",
+      // Generate Schnorr signature dari vote data
+      const voteData = {
+        voter: voter.id,
+        candidate: selectedCandidate.id,
+        timestamp: Date.now(),
+      };
+      const messageHash = window.crypto
+        ? Buffer.from(await window.crypto.subtle.digest("SHA-256", new TextEncoder().encode(JSON.stringify(voteData)))).toString("hex")
+        : require("crypto").createHash("sha256").update(JSON.stringify(voteData)).digest("hex");
+      const schnorrSignature = await schnorrSign(messageHash, privateKey);
+      // ZKP proof (dummy, ganti dengan real ZKP jika frontend support)
+      const zkpProof = "zkp_not_implemented_in_frontend";
+      const txHash = await sendVoteToBlockchain({
+        candidateId: Number(selectedCandidate.id),
+        schnorrSignature,
+        zkpProof,
       });
+      toast({
+        title: "Vote Terkirim ke Blockchain!",
+        description: `Tx Hash: ${txHash}`,
+      });
+      setVoteSubmitted(true);
+    } catch (error: any) {
+      console.error("Error casting vote:", error);
+      // Tangkap error Already voted dari blockchain
+      if (
+        error?.message?.includes("Already voted") ||
+        error?.error?.message?.includes("Already voted")
+      ) {
+        toast({
+          title: "Error",
+          description: "Kamu sudah melakukan voting, tidak bisa vote dua kali.",
+          variant: "destructive",
+        });
+      } else {
+        toast({
+          title: "Error",
+          description: error?.message || "Failed to cast vote. Please try lagi.",
+          variant: "destructive",
+        });
+      }
     } finally {
       setIsSubmitting(false);
     }
   };
+
+  // Ambil hasil voting dari blockchain
+  const [blockchainResults, setBlockchainResults] = useState<{ [candidateId: string]: number }>({});
+  useEffect(() => {
+    async function fetchResults() {
+      if (!election) return;
+      const results: { [candidateId: string]: number } = {};
+      for (const candidate of election.candidates) {
+        results[candidate.id] = await getVotesCountFromBlockchain(Number(candidate.id));
+      }
+      setBlockchainResults(results);
+    }
+    fetchResults();
+  }, [election, voteSubmitted]);
 
   if (voteSubmitted) {
     return (
@@ -407,7 +457,7 @@ export default function VotePage() {
               <Card>
                 <CardContent className="pt-6">
                   <h3 className="text-lg font-semibold mb-4">
-                    Hasil Pemilihan Real-time
+                    Hasil Pemilihan dari Blockchain
                   </h3>
                   {election && election.showRealTimeResults !== false ? (
                     <div className="space-y-4">
@@ -427,12 +477,12 @@ export default function VotePage() {
                               <div
                                 className="h-full bg-emerald-500"
                                 style={{
-                                  width: `${Math.floor(Math.random() * 100)}%`,
+                                  width: `${blockchainResults[candidate.id] ? Math.min(blockchainResults[candidate.id] * 10, 100) : 0}%`,
                                 }}
                               ></div>
                             </div>
                             <span className="font-semibold">
-                              {Math.floor(Math.random() * 100)} suara
+                              {blockchainResults[candidate.id] || 0} suara
                             </span>
                           </div>
                         </div>
