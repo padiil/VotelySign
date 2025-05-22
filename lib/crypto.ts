@@ -1,8 +1,4 @@
 import { schnorr } from "@noble/curves/secp256k1";
-// @ts-expect-error: snarkjs has no types
-import * as snarkjs from "snarkjs";
-import fs from "fs";
-import path from "path";
 
 // --- CACHE WASM & ZKEY BUFFER ---
 let wasmBuffer: Buffer | null = null;
@@ -10,14 +6,14 @@ let zkeyBuffer: Buffer | null = null;
 
 function getWasmBuffer() {
   if (!wasmBuffer) {
-    wasmBuffer = fs.readFileSync(path.resolve(process.cwd(), "zkp/vote_range.wasm"));
+    wasmBuffer = null; // Dummy implementation for browser compatibility
   }
   return wasmBuffer;
 }
 
 function getZkeyBuffer() {
   if (!zkeyBuffer) {
-    zkeyBuffer = fs.readFileSync(path.resolve(process.cwd(), "zkp/proving_key.zkey"));
+    zkeyBuffer = null; // Dummy implementation for browser compatibility
   }
   return zkeyBuffer;
 }
@@ -36,31 +32,8 @@ export async function schnorrSign(messageHex: string, privateKeyHex: string): Pr
   return typeof sig === "string" ? sig : Buffer.from(sig).toString("hex");
 }
 
-/**
- * Generate a real ZKP proof using snarkjs (Bulletproofs-like)
- * Uses path string to .wasm and .zkey for performance
- */
+// Dummy ZKP generator untuk frontend/browser (tidak pakai snarkjs)
 export async function generateBulletproof(candidateId: number): Promise<string> {
-  // Pastikan input ke circuit adalah number
-  const input = { x: Number(candidateId), min: 1, max: 100 };
-  console.log('[ZKP] Input to fullProve:', input);
-
-  let seconds = 0;
-  const interval = setInterval(() => {
-    seconds++;
-    console.log(`[ZKP] Generating proof... ${seconds} detik berlalu`);
-  }, 1000);
-
-  console.time("ZKP fullProve");
-  console.log("[ZKP] Mulai generate proof untuk candidateId:", candidateId);
-  // GUNAKAN PATH STRING, BUKAN BUFFER
-  const { proof, publicSignals } = await snarkjs.groth16.fullProve(
-    input,
-    path.resolve(process.cwd(), "zkp/vote_range.wasm"),
-    path.resolve(process.cwd(), "zkp/proving_key.zkey")
-  );
-  clearInterval(interval);
-  console.timeEnd("ZKP fullProve");
-  console.log("[ZKP] Proof selesai. Panjang proof:", JSON.stringify(proof).length, "publicSignals:", publicSignals);
-  return JSON.stringify({ proof, publicSignals });
+  // Return dummy proof, karena snarkjs tidak bisa di browser
+  return JSON.stringify({ proof: "dummy", publicSignals: [candidateId, 1, 100] });
 }
