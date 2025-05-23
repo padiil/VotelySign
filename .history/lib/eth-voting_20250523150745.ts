@@ -1,5 +1,5 @@
 import { ethers } from "ethers";
-import voting from "../voting.json";
+import voting from "../voting.json"
 
 // Ganti dengan alamat kontrak hasil deploy kamu di Sepolia
 export const CONTRACT_ADDRESS = "0x7e5f495d5d9e9e362ab9a2cf818993430074149f";
@@ -8,10 +8,10 @@ export const CONTRACT_ADDRESS = "0x7e5f495d5d9e9e362ab9a2cf818993430074149f";
 export const CONTRACT_ABI = voting.abi;
 
 declare global {
-  interface Window {
-    ethereum?: any;
+    interface Window {
+      ethereum?: any;
+    }
   }
-}
 
 // Fungsi untuk mengirim vote ke smart contract
 export async function sendVoteToBlockchain({
@@ -38,13 +38,9 @@ export async function sendVoteToBlockchain({
       });
     } catch (switchError: any) {
       if (switchError.code === 4902) {
-        throw new Error(
-          "Sepolia network belum ditambahkan di wallet. Tambahkan dulu."
-        );
+        throw new Error("Sepolia network belum ditambahkan di wallet. Tambahkan dulu.");
       }
-      throw new Error(
-        "Gagal switch ke jaringan Sepolia. Silakan ganti network di wallet ke Sepolia."
-      );
+      throw new Error("Gagal switch ke jaringan Sepolia. Silakan ganti network di wallet ke Sepolia.");
     }
     // Refresh provider setelah switch
     return sendVoteToBlockchain({ candidateId, schnorrSignature, zkpProof });
@@ -59,9 +55,7 @@ export async function sendVoteToBlockchain({
 }
 
 // Fungsi untuk mengambil jumlah suara dari smart contract
-export async function getVotesCountFromBlockchain(
-  candidateId: number
-): Promise<number> {
+export async function getVotesCountFromBlockchain(candidateId: number): Promise<number> {
   if (typeof window === "undefined" || !window.ethereum) {
     throw new Error("MetaMask is not available");
   }
@@ -71,11 +65,7 @@ export async function getVotesCountFromBlockchain(
   if (network.chainId !== 11155111) {
     throw new Error("Pastikan wallet kamu di jaringan Sepolia");
   }
-  const contract = new ethers.Contract(
-    CONTRACT_ADDRESS,
-    CONTRACT_ABI,
-    provider
-  );
+  const contract = new ethers.Contract(CONTRACT_ADDRESS, CONTRACT_ABI, provider);
   const count = await contract.getVotesCount(candidateId);
   return Number(count);
 }

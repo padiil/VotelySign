@@ -168,29 +168,22 @@ export async function checkVoterHasVoted({
     return { success: false, error: "Kode pemilih tidak ditemukan." };
   }
   const voter = voterArr[0];
-
-  // Check if the voter has already voted based on has_voted field
-  if (voter.has_voted) {
+  // Gunakan nullifier_hash untuk pengecekan double voting
+  if (!voter.nullifier_hash) {
+    return {
+      success: false,
+      error: "Data nullifier_hash tidak ditemukan untuk pemilih ini.",
+    };
+  }
+  const txArr = await db
+    .select()
+    .from(vote_transactions)
+    .where(eq(vote_transactions.nullifier_hash, voter.nullifier_hash));
+  if (txArr.length > 0) {
     return {
       success: false,
       error: "Kamu sudah melakukan voting, tidak bisa vote dua kali.",
     };
   }
-
-  // If they have a nullifier_hash, double-check transactions
-  // This is a secondary check in case has_voted wasn't updated
-  if (voter.nullifier_hash) {
-    const txArr = await db
-      .select()
-      .from(vote_transactions)
-      .where(eq(vote_transactions.nullifier_hash, voter.nullifier_hash));
-    if (txArr.length > 0) {
-      return {
-        success: false,
-        error: "Kamu sudah melakukan voting, tidak bisa vote dua kali.",
-      };
-    }
-  }
-
   return { success: true, voter };
 }

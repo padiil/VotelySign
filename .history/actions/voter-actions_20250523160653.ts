@@ -168,7 +168,7 @@ export async function checkVoterHasVoted({
     return { success: false, error: "Kode pemilih tidak ditemukan." };
   }
   const voter = voterArr[0];
-
+  
   // Check if the voter has already voted based on has_voted field
   if (voter.has_voted) {
     return {
@@ -176,7 +176,7 @@ export async function checkVoterHasVoted({
       error: "Kamu sudah melakukan voting, tidak bisa vote dua kali.",
     };
   }
-
+  
   // If they have a nullifier_hash, double-check transactions
   // This is a secondary check in case has_voted wasn't updated
   if (voter.nullifier_hash) {
@@ -191,6 +191,6 @@ export async function checkVoterHasVoted({
       };
     }
   }
-
+  
   return { success: true, voter };
 }

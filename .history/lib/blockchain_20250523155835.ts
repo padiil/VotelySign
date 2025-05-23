@@ -2,8 +2,7 @@ import { createServerDbClient } from "./db";
 import { blocks, vote_transactions, authority_nodes } from "./schema";
 import * as crypto from "crypto";
 import { schnorrSign, generateBulletproof } from "./crypto";
-import { eq } from "drizzle-orm";
-import { voters } from "./schema";
+
 /**
  * Creates a genesis block for a new election
  */
