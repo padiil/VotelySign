@@ -2,7 +2,7 @@ import { ethers } from "ethers";
 import voting from "../voting.json";
 
 // Ganti dengan alamat kontrak hasil deploy kamu di Sepolia
-export const CONTRACT_ADDRESS = "0x7e5f495d5d9e9e362ab9a2cf818993430074149f";
+export const CONTRACT_ADDRESS = "0x6478f78311f1ee55f6ed6f050c0005f455796c30";
 
 // Ganti dengan ABI kontrak Voting kamu (copy dari Remix > tab ABI)
 export const CONTRACT_ABI = voting.abi;
@@ -15,11 +15,15 @@ declare global {
 
 // Fungsi untuk mengirim vote ke smart contract
 export async function sendVoteToBlockchain({
+  electionId,
   candidateId,
+  voterPublicKey,
   schnorrSignature,
   zkpProof,
 }: {
+  electionId: number;
   candidateId: number;
+  voterPublicKey: string; // bytes32 hex string
   schnorrSignature: string;
   zkpProof: string;
 }) {
@@ -47,19 +51,20 @@ export async function sendVoteToBlockchain({
       );
     }
     // Refresh provider setelah switch
-    return sendVoteToBlockchain({ candidateId, schnorrSignature, zkpProof });
+    return sendVoteToBlockchain({ electionId, candidateId, voterPublicKey, schnorrSignature, zkpProof });
   }
   await provider.send("eth_requestAccounts", []); // Ensure wallet is connected
   const signer = provider.getSigner();
   const contract = new ethers.Contract(CONTRACT_ADDRESS, CONTRACT_ABI, signer);
-  // Panggil fungsi vote di smart contract
-  const tx = await contract.vote(candidateId, schnorrSignature, zkpProof);
+  // Panggil fungsi vote di smart contract (dengan electionId, candidateId, voterPublicKey, schnorrSignature, zkpProof)
+  const tx = await contract.vote(electionId, candidateId, voterPublicKey, schnorrSignature, zkpProof);
   await tx.wait(); // Tunggu konfirmasi
   return tx.hash;
 }
 
 // Fungsi untuk mengambil jumlah suara dari smart contract
 export async function getVotesCountFromBlockchain(
+  electionId: number,
   candidateId: number
 ): Promise<number> {
   if (typeof window === "undefined" || !window.ethereum) {
@@ -76,6 +81,6 @@ export async function getVotesCountFromBlockchain(
     CONTRACT_ABI,
     provider
   );
-  const count = await contract.getVotesCount(candidateId);
+  const count = await contract.getVotesCount(electionId, candidateId);
   return Number(count);
 }

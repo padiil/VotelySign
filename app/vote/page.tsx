@@ -43,6 +43,7 @@ import {
 } from "@/lib/eth-voting";
 import { schnorrSign } from "@/lib/crypto";
 import CountdownTimer from "@/components/countdown-timer";
+import { ethers } from "ethers";
 
 export default function VotePage() {
   const router = useRouter();
@@ -266,7 +267,33 @@ export default function VotePage() {
   };
 
   const handleVoteSubmit = async () => {
+    // Parameter validation and logging
     if (!selectedCandidate || !voter || !election?.id) {
+      toast({
+        title: "Error",
+        description: "Data kandidat, pemilih, atau pemilihan tidak lengkap.",
+        variant: "destructive",
+      });
+      console.error("Vote submit error: missing selectedCandidate, voter, or election.id", {
+        selectedCandidate,
+        voter,
+        electionId: election?.id,
+      });
+      return;
+    }
+
+    const electionId = Number(election.id);
+    const candidateId = Number(selectedCandidate.id);
+    if (isNaN(electionId) || isNaN(candidateId)) {
+      toast({
+        title: "Error",
+        description: "ID pemilihan atau kandidat tidak valid.",
+        variant: "destructive",
+      });
+      console.error("Vote submit error: invalid electionId or candidateId", {
+        electionId,
+        candidateId,
+      });
       return;
     }
 
@@ -313,8 +340,47 @@ export default function VotePage() {
       const schnorrSignature = await schnorrSign(messageHash, privateKey);
       // ZKP proof (dummy, ganti dengan real ZKP jika frontend support)
       const zkpProof = "zkp_not_implemented_in_frontend";
+
+      // Ambil public key voter dan pastikan bytes32
+      let voterPublicKey = voter.public_key;
+      if (typeof voterPublicKey !== "string") {
+        toast({
+          title: "Error",
+          description: `Public key pemilih tidak valid: ${voterPublicKey}`,
+          variant: "destructive",
+        });
+        console.error("Invalid voter public key (not string):", voterPublicKey);
+        setIsSubmitting(false);
+        return;
+      }
+      // Normalisasi: lowercase, hapus spasi, dan pastikan 0x
+      voterPublicKey = voterPublicKey.trim().toLowerCase();
+      if (!voterPublicKey.startsWith("0x")) {
+        voterPublicKey = "0x" + voterPublicKey;
+      }
+      // Log public key yang akan dikirim ke contract
+      console.log("[DEBUG] Public key yang dikirim ke contract:", voterPublicKey);
+      try {
+        // hexZeroPad akan otomatis pad ke 32 byte (66 char)
+        voterPublicKey = ethers.utils.hexZeroPad(voterPublicKey, 32);
+        // Log hasil akhir
+        console.log("[DEBUG] Public key bytes32 final:", voterPublicKey);
+      } catch (e) {
+        toast({
+          title: "Error",
+          description: `Public key pemilih gagal diproses: ${e}`,
+          variant: "destructive",
+        });
+        console.error("hexZeroPad error:", e, "input:", voter.public_key);
+        setIsSubmitting(false);
+        return;
+      }
+
+      // Kirim vote ke blockchain
       const txHash = await sendVoteToBlockchain({
-        candidateId: Number(selectedCandidate.id),
+        electionId,
+        candidateId,
+        voterPublicKey,
         schnorrSignature,
         zkpProof,
       });
@@ -383,7 +449,11 @@ export default function VotePage() {
               continue;
             }
 
-            const votes = await getVotesCountFromBlockchain(candidateId);
+            // Update: Kirim electionId dan candidateId
+            const votes = await getVotesCountFromBlockchain(
+              Number(election.id),
+              candidateId
+            );
             console.log(
               `Candidate ${candidate.name} (ID: ${candidateId}) has ${votes} votes`
             );
